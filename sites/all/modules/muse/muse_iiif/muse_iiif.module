@@ -1,0 +1,465 @@
+<?php
+
+
+function muse_iiif_menu()
+{
+
+    $items['muse_iiif/%'] = array(
+        'page callback' => 'muse_iiif_get',
+        'page arguments' => array(1),
+        'access arguments' => array('access content'),
+        'type' => MENU_CALLBACK,
+    );
+
+    $items['muse_download/%'] = array(
+        'page callback' => 'muse_iiif_download',
+        'page arguments' => array(1),
+        'access arguments' => array('access content'),
+        'type' => MENU_CALLBACK,
+    );
+
+
+    return $items;
+
+}
+
+
+/**
+ * Implementation of hook_theme().
+ */
+function muse_iiif_theme()
+{
+    $template_path = drupal_get_path('module', 'muse_iiif') . '/templates';
+    return array(
+        'muse_iiif' => array(
+            'template' => 'muse_iiif',
+            'path' => $template_path,
+            'arguments' => array('link_url' => NULL),
+        ),
+    );
+}
+
+/**
+ * Implements hook_libraries_info().
+ */
+function muse_iiif_libraries_info()
+{
+    $libraries['openseadragon'] = array(
+        'name' => 'OpenSeadragon',
+        'vendor url' => 'https://openseadragon.github.io',
+        'download url' => 'https://github.com/openseadragon/openseadragon/releases/download/v2.2.1/openseadragon-bin-2.2.1.zip',
+        'version arguments' => array(
+            'file' => 'openseadragon.min.js',
+            'pattern' => '/openseadragon ([0-9\.]+)/',
+            'lines' => 1,
+        ),
+        'files' => array(
+            'js' => array('openseadragon.min.js'),
+        ),
+        'variants' => array(
+            'minified' => array(
+                'files' => array(
+                    'js' => array('openseadragon.min.js'),
+                ),
+            ),
+            'development' => array(
+                'files' => array(
+                    'js' => array('openseadragon.js'),
+                ),
+            ),
+        ),
+    );
+
+    return $libraries;
+}
+
+/**
+ * tool function for Preprocesses variables for muse_iiif.tpl.php.
+ *
+ * @todo Transfer the CSS and JS to use #attached. Could add a content variable
+ * or do this with a theme wrapper.
+ */
+function _muse_iiif_template_preprocess(&$variables)
+{
+    static $index = 0;
+
+    #libraries_load('leaflet');
+    libraries_load('openseadragon');
+    #drupal_add_js(drupal_get_path('module', 'muse_iiif').'/js/leaflet-iiif.js');
+
+    drupal_add_css('
+	.iiif-viewer {
+		width:100%;
+		height:800px;
+		text-align:center;
+  }
+
+  .leaflet-container {
+		background: black;
+  }
+	#leafletMouseWheelTip{
+    color: black;
+    background-color: #f5f5dc;
+    position: absolute;
+    border-radius: 5px 5px 5px 5px;
+    opacity: 0.8;
+    font: bold;
+    font-weight: bold;
+    white-space: nowrap;
+    padding: 5px;
+  }		
+			
+	', 'inline');
+
+    drupal_add_js(drupal_get_path('module', 'muse_iiif') . '/muse_iiif.js');
+    $js_options = array('type' => 'inline', 'scope' => 'footer', 'weight' => 3);
+
+    drupal_add_js('
+(function ($){   
+	$(".iiif-viewer").viewer();
+})(jQuery);
+', $js_options);
+
+}
+
+
+function muse_iiif_download($uuid, $type = '')
+{
+    global $base_url;
+    if (empty($uuid)) {
+        drupal_not_found();
+        /*
+        drupal_add_http_header('Content-Type', 'application/json; charset=utf-8');
+        echo json_encode(array());
+        return;*/
+    }
+    #MUSE Rule
+    $data_mode = variable_get('muse_data_mode', 'local');
+    $scope = variable_get('muse_scope', '');
+
+
+    $file = _muse_digifile_load($uuid);
+    if (!$file) {
+        drupal_not_found();
+        return;
+    }
+    $scheme = file_uri_scheme($file->filepath);
+    if ($scheme != 'muse') {
+        drupal_not_found();
+        return;
+    }
+
+
+    if ($data_mode == 'local' && $scope != $file->scope) {
+        drupal_not_found();
+        return;
+    }
+
+    #讓後臺去控制是否提供原圖下載
+    $dl_src_img = variable_get('download_source_image', false);
+    #$filePath_src = str_replace('ascdc_muse.jpg', 'ascdc_muse_src.jpg', $file->object->uri);
+    $parts_org = pathinfo($file->filename);
+    $parts_now = pathinfo($file->filepath);
+    $f_name = str_replace($parts_org['extension'], $parts_now['extension'], $file->filename);
+
+
+    #針對影片特別的處理
+    if ($file->type == 'video' && !isset($_GET['download'])) {
+        $file_path = $file->filepath;
+        if ($scope != $file->scope) {
+            $root = md5($file->scope);
+            $file_path = str_replace('muse://', 'portal://' . $root . '/', $file->filepath);
+        }
+        $v_path = drupal_get_path('module', 'muse_iiif');
+        require_once "$v_path/videoStream.php";
+        $stream = new VideoStream($file_path);
+        $stream->start();
+    }
+
+
+    /*
+    if (!$headers) {
+        return MENU_ACCESS_DENIED;
+    }*/
+
+    $headers = array(
+        'Content-Type' => mime_header_encode($file->object->filemime),
+        #'Content-Disposition' => 'attachment; filename="' . mime_header_encode(drupal_basename($file->filepath)) . '"',#決定是否跳出下載
+        'Content-Length' => $file->object->filesize,
+        'Content-Transfer-Encoding' => 'binary',
+        'Pragma' => 'no-cache',
+        'Cache-Control' => 'must-revalidate, post-check=0, pre-check=0',
+        'Expires' => '0',
+        'Accept-Ranges' => 'bytes'
+    );
+
+    if (isset($_GET['download']) && $_GET['download']) {
+        $headers['Content-Disposition'] = 'attachment; filename="' . $f_name . '"';#決定是否跳出下載
+    } else {
+        $headers['Content-Disposition'] = 'inline; filename="ascdc.' . $parts_now['extension'] . '"';
+    }
+
+    if ($file->type == 'video') ddl($headers, $f_name);
+
+
+    if ($scope != $file->scope) {
+        $root = md5($file->scope);
+        $new_path = str_replace('muse://', 'portal://' . $root . '/', $file->filepath);
+        $scheme = file_uri_scheme($new_path);
+        #portal://03f4bf779ad6c894674d7863b14895e4/31/37/33/ascdc_muse.jpg
+        file_transfer($new_path, $headers);
+
+    } else {
+        #filepath==>>  muse://31/37/33/ascdc_muse.jpg
+        file_transfer($file->filepath, $headers);
+    }
+
+    #TODO:src file replace??
+    /*
+    
+    $iiif_root = str_replace('media/', '', $root_path);
+    
+    $filePath = $iiif_root . "/" . file_uri_target($file->filepath);
+    if($file->type == 'image'){
+        $filePath_src = str_replace('ascdc_muse.jpg', 'ascdc_muse_src.jpg', $filePath);
+    }else{
+        $filePath_src = $filePath;
+    }
+
+    */
+
+}
+
+function muse_iiif_get($uuid)
+{
+    global $base_url;
+    #http://digilib:8080/digilib/Scaler/IIIF/ {相對路徑 / 換 ! 號} / {IIIF參數
+    $iiif = variable_get('iiifServer', 'museiiif');
+    $port = variable_get('iiifServer_port', '80');
+    if (empty($uuid)) {
+        #drupal_goto('home');
+        drupal_add_http_header('Content-Type', 'application/json; charset=utf-8');
+        echo json_encode(array());
+        return;
+    }
+
+    #MUSE Rule
+    $data_mode = variable_get('muse_data_mode', 'local');
+    $scope = variable_get('muse_scope', '');
+    $file = _muse_digifile_load($uuid);
+    if (!$file) {
+        drupal_add_http_header('Content-Type', 'application/json; charset=utf-8');
+        echo json_encode(array());
+        return;
+    }
+    $src_scheme = file_uri_scheme($file->filepath);
+    if ($src_scheme != 'muse') {
+        drupal_add_http_header('Content-Type', 'application/json; charset=utf-8');
+        echo json_encode(array());
+        return;
+    }
+    if ($data_mode == 'local' && $scope != $file->scope) {
+        drupal_add_http_header('Content-Type', 'application/json; charset=utf-8');
+        echo json_encode(array());
+        return;
+    }
+    switch ($file->type) {
+        case 'audio':
+            #drupal_goto('home');
+            drupal_add_http_header('Content-Type', 'application/json; charset=utf-8');
+            echo json_encode(array());
+            return;
+            break;
+        case 'video':
+            $file->filepath = str_replace('ascdc_muse.mp4', 'ascdc_muse_cover.jpg', $file->filepath);
+            #TODO:file exists只針對子站
+            if ($data_mode == 'local') {
+                if (!file_exists($file->filepath)) {
+                    drupal_add_http_header('Content-Type', 'application/json; charset=utf-8');
+                    echo json_encode(array());
+                    return;
+                }
+            }
+            break;
+        case 'document':
+            $file->filepath = str_replace('ascdc_muse.pdf', 'ascdc_muse_cover.jpg', $file->filepath);
+            if ($data_mode == 'local') {
+                if (!file_exists($file->filepath)) {
+                    drupal_add_http_header('Content-Type', 'application/json; charset=utf-8');
+                    echo json_encode(array());
+                    return;
+                }
+            }
+            break;
+        case 'image':
+            if ($data_mode == 'local') {
+                if (!file_exists($file->filepath)) {
+                    drupal_add_http_header('Content-Type', 'application/json; charset=utf-8');
+                    echo json_encode(array());
+                    return;
+                }
+            }
+            break;
+        default:
+            drupal_add_http_header('Content-Type', 'application/json; charset=utf-8');
+            echo json_encode(array());
+            return;
+            break;
+    }
+
+    $wrapper = file_stream_wrapper_get_instance_by_uri($file->filepath);
+    if (!$wrapper) return NULL;
+    $root_path = $wrapper->getDirectoryPath($file->scope);
+
+    $iiif_root = str_replace('media/', '', $root_path);
+
+    $filePath = $iiif_root . "/" . file_uri_target($file->filepath);
+    if ($file->type == 'image') {
+        $filePath_src = str_replace('ascdc_muse.jpg', 'ascdc_muse_src.jpg', $filePath);
+    } else {
+        $filePath_src = $filePath;
+    }
+
+
+    #IIIF server conf.
+    $d_port = ($port == 80) ? '' : ':' . $port;
+    $url_prex = "http://$iiif" . $d_port . "/IIIF/";
+    $iiif_base = '';
+    $iiif_callpath = '';
+    //add header
+    drupal_add_http_header('Access-Control-Allow-Origin', '*');
+
+
+    $q = request_path();#muse_iiif/56751d62c71c34390459b91126909bec/full/full/0/default.jpg
+    $param = explode('/', $q);
+
+    $param_jpg = arg(2) . "/" . arg(3) . "/" . arg(4) . "/" . arg(5);  //arg(2)=>region, arg(3) => image size, arg(4)=> rotation, arg(5)=>quality
+    $param_json = "/info.json";
+
+
+    //check the json request in URL
+    $chkjson = check_include_json(arg(2));
+    if (arg(2) == 'info.json') {
+        $iiif_callpath = $url_prex . str_replace("/", "!", $filePath_src) . $param_json; // IIIF server URL + info.json
+        $iiif_base = $url_prex . str_replace("/", "!", $filePath_src); // IIIF server base URL
+        #ddl($iiif_base,'$iiif_base');
+    } //check the image parameters
+    else if (arg(2) != '' && arg(3) != '' && arg(4) != '' && arg(5) == 'default.jpg') {
+        /*
+        $ppp = array(
+                1=>arg(1),2=>arg(2),3=>arg(3),4=>arg(4),5=>arg(5)
+        );
+        ddl($ppp,'arg');
+        */
+
+        /**
+         * muse_iiif/56751d62c71c34390459b91126909bec/full/full/0/default.jpg
+         * arg(0)      1                                2    3  4    5
+         *
+         * example:
+         * muse_iiif/56751d62c71c34390459b91126909bec/0,0,2048,1704/1024,/0/default.jpg
+         *
+         */
+        #讓後臺去控制是否提供原圖下載
+        $dl_src_img = variable_get('download_source_image', false);
+        #檢查是否出現試圖取得最大圖的或是容許範圍的參數
+        $chekP = check_Image_Parameters(arg(3)); // go to check IIIF parameters function
+
+        if ($dl_src_img) {
+            $iiif_callpath = $url_prex . str_replace("/", "!", $filePath_src) . "/" . $param_jpg;
+        } else {
+            if ($chekP) {
+                #必須存取源圖的狀況，提供原圖的輸出
+                $iiif_callpath = $url_prex . str_replace("/", "!", $filePath_src) . "/" . $param_jpg;
+            }
+            #原先是開放授權給給原圖，這邊先關閉
+            /*else if(!empty($file->licence) || $file->licence != 'all-rights' ){
+                $iiif_callpath = $url_prex.str_replace("/","!",$filePath_src)."/".$param_jpg;
+            }*/
+
+            else {
+                #$iiif_callpath = $url_prex.str_replace("/","!",$filePath_src)."/".$param_jpg;
+                #用瀏覽級輸出
+                $iiif_callpath = $url_prex . str_replace("/", "!", $filePath) . "/" . $param_jpg;
+            }
+        }
+    } else if (sizeof($param) == 2) {
+        #只傳ID，給原圖(同 muse_iiif/56751d62c71c34390459b91126909bec/full/full/0/default.jpg)
+        #muse_iiif/56751d62c71c34390459b91126909bec
+        $iiif_callpath = $url_prex . str_replace("/", "!", $filePath);
+    } else if (sizeof($param) < 5) {
+        #iiif參數少於5不合法
+        return NULL;
+    }
+    #ddl($iiif_callpath,$q);
+    $handle = curl_init();
+    //Post IIIF URI
+    curl_setopt($handle, CURLOPT_URL, $iiif_callpath);
+    curl_setopt($handle, CURLOPT_HTTPPROXYTUNNEL, 0);
+    curl_setopt($handle, CURLOPT_FOLLOWLOCATION, true);
+    curl_setopt($handle, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($handle, CURLOPT_SSL_VERIFYHOST, 0);
+    curl_setopt($handle, CURLOPT_SSL_VERIFYPEER, 0);
+    curl_exec($handle);
+    $response = curl_exec($handle);
+    curl_close($handle);
+    //Output Json or Image
+    if ($response === false) {
+        #return 'Curl error: ' . curl_error($base_url."/".$q);
+        return NULL;
+    }
+
+    if ($chkjson) {
+        #ddl($response,$base_url."/".$q);
+        drupal_add_http_header('Content-Type', 'application/json; charset=utf-8');
+
+        #http://museiiif/IIIF/77d8d7515f320706fe75a4ed8c066a0d!37!32!30!ascdc_muse_src
+        $iiif_base = str_replace('.jpg', '', $iiif_base);
+        $response = str_replace($iiif_base, $base_url . "/muse_iiif/$uuid", $response);
+    } else {
+        drupal_add_http_header('Content-Type', 'image/jpeg');
+    }
+
+    echo $response;
+
+}
+
+function check_Image_Parameters($parm)
+{
+    $chk_pct = substr_count($parm, 'pct'); //check pct parameter ex.pct=50 (image scale parameter)
+    $var = explode(",", $parm);
+
+    if ($parm == 'full' || $parm == 'max' || $chk_pct > 0 || intval($var[0]) > 2000 || intval($var[1]) > 2000) {
+        //if ($var[0] >2000){
+        return false;
+
+    } else {
+
+        return true;
+    }
+}
+
+
+//check file type (json  or image)
+function check_include_json($word)
+{
+
+
+    $jsontype = array('json', 'JSON');
+    //$Imgtype = array('jpg','JPG','png','PNG');
+    $chkj = 0;
+    foreach ($jsontype as &$j) {
+        $chkj += substr_count($word, $j);
+    }
+    if ($chkj > 0) {
+
+        return 'json';
+    } else {
+
+        return false;
+    }
+
+}
+
+
+?>
