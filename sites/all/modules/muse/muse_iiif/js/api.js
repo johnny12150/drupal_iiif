@@ -1,36 +1,68 @@
-// api.js
 (function ($) {
     $.fn.work = function () {
         //alert('change success');
         var _this = this;
-        var colorArray = ['aqua', 'fuchsia', 'lime', 'maroon', 'navy', 'olive', 'orange', 'purple', 'red', 'silver', 'gray', 'teal', 'white', 'yellow', 'green'];
+        var wait_check = function (callback) {
+            // based on data-url to POST manifest API
+            // and API will determine to return an already exist manifest URI
+            // 回傳getJSON可以ajax GET 的URI
+            // or create a new one then return
+            var URI = $('.iiif-viewer').attr('data-url');
+            var URI_split = URI.split('/').pop();
+            console.log(URI_split);
+            var url = 'http://172.16.100.20:3033/api/GET/manifest/check/' + URI_split;
+            $.ajax({
+                type: 'GET',
+                url: url,
+                contentType: "application/json",
+                crossDomain: true,
+                success: function (response) {
+                    console.log('mId: ');
+                    console.log(response);
+                    callback(response);
+                },
+                error: function (data) {
+                    console.log(data.error);
+                }
+            });
+        };
+
+        // console.log("image: " + $('.iiif-viewer').attr('data-url') + "/info.json");
+        // var API_mId = check_manifest(data_url);
+        // var full_API_link = 'http://172.16.100.20:3033/api/GET/'+API_mId+'/manifest';
+
+        // wait for the checking progress
+        wait_check(function (manifest_url) {
+        //alert('change success');
+            // var _this = this;
+            var colorArray = ['aqua', 'fuchsia', 'lime', 'maroon', 'navy', 'olive', 'orange', 'purple', 'red', 'silver', 'gray', 'teal', 'white', 'yellow', 'green'];
         var manifest = {};
         var href = window.location.href;
         var manifestarr = URLToArray(href);
         var url = manifestarr['manifest'];
-        _this.attr('id', 'main');
+            _this.attr('id', 'main');
         var elem = '#main';
         var map;
         var viewer_offset;
-        var data = GetJSON(url);
+            // var data = GetJSON(url);
+            var data = GetJSON(manifest_url);
         var zoomtemp;
         var div = $('<div id ="mapid" class="mapid"></div>');
         $(elem).append(div);
         manifest.data = data;
         manifest.element = elem;
         manifest.canvasArray = [];
-        manifest.annolist = [];
+            manifest.annolist = [];
         // index 為設定起始的頁面(第幾個canvas)
         manifest.index = 1;
         manifest.canvasArray = data.sequences[0].canvases;
-        manifest.currenCanvas = manifest.canvasArray[manifest.index - 1];
+            manifest.currenCanvas = manifest.canvasArray[manifest.index - 1];
         manifest.currenRotation = 0;
         manifest.countCreatAnnotation = 0;
-        manifest.canvasSize = {height: manifest.currenCanvas.height, width: manifest.currenCanvas.width};
+            manifest.canvasSize = {height: manifest.currenCanvas.height, width: manifest.currenCanvas.width};
         manifest.leaflet = leafletMap();
         manifest.drawnItems;
         manifest.annoArray;
-
         /*create leaflet map*/
         function leafletMap() {
             var canvas = manifest.currenCanvas;
@@ -46,7 +78,7 @@
                     break;
                 }
             }
-            console.log("project zoom value:" + zoomtemp);
+            // console.log("project zoom value:"+zoomtemp);
 
             map = L.map('mapid', {
                 crs: L.CRS.Simple,
@@ -113,7 +145,7 @@
                 }
             });
             /*繪圖開始*/
-            add_chose_button();
+            // add_chose_button();
             add_rotation_button();
             add_info_button();
 
@@ -177,11 +209,11 @@
                         'exist': true
                     };
 
-                    console.log(point);
-                    console.log(annoData.point);
-
-                    console.log("anno created");
-                    console.log(annoData);
+                    // console.log(point);
+                    // console.log(annoData.point);
+                    //
+                    // console.log("anno created");
+                    // console.log(annoData);
 
                     manifest.drawnItems.addLayer(layer);
                     // annoArray會根據 leaflet_id 把資料放進去
@@ -221,97 +253,51 @@
                     // var url = 'http://172.16.100.20:3033/api/POST/anno/mongo';
                     var url_mysql = 'http://172.16.100.20:3033/api/POST/anno/mysql';
                     var new_anno_index;
-                    // fetch to save anno
-                    fetch(url_mysql, {
-                        method: "POST",
-                        headers: {
-                            'Accept': 'application/json, text/plain, */*',
-                            'Content-Type': 'application/json'
+
+                    // IE 11 可能不支援fetch需改成ajax
+                    $.ajax({
+                        type: 'POST',
+                        url: url_mysql,
+                        contentType: "application/json",
+                        dataType: "json",
+                        crossDomain: true,
+                        data:
+                            JSON.stringify({
+                                anno_data: json.resource.chars,
+                                anno_place: json.on,
+                                other_content: canvas.otherContent[0]['@id'],
+                                mId: manifest.data.mId,
+                                canvas_index: c_index
+                            }), //passing data to server
+                        success: function (response) {
+                            var res_data = response;
+                            console.log(res_data);
+                            if (res_data.text == 'add new one') {
+                                console.log("no need to update otherContent url");
+                                console.log(res_data.resources_id);
+                                new_anno_index = res_data.num;
+                                manifest.annoArray[layer._leaflet_id].anno_index = new_anno_index;
+                                json.resource['@id'] = res_data.resources_id;
+                                json.anno_index = new_anno_index;
+                                // 取代原本 @id 是 default
+                                json['@id'] = canvas.otherContent[0]['@id'];
+                                manifest.annolist.push(json);
+                            }
+                            else {
+                                console.log("updated otherContent Url: " + res_data.text);
+                                canvas.otherContent[0]['@id'] = res_data.text;
+                                new_anno_index = res_data.num;
+                                manifest.annoArray[layer._leaflet_id].anno_index = new_anno_index;
+                                json.resource['@id'] = res_data.resources_id;
+                                json.anno_index = new_anno_index;
+                                json['@id'] = canvas.otherContent[0]['@id'];
+                                manifest.annolist.push(json);
+                            }
                         },
-                        body: JSON.stringify({
-                            anno_data: json.resource.chars,
-                            anno_place: json.on,
-                            other_content: canvas.otherContent[0]['@id'],
-                            // for mongo
-                            // mId:manifest.data['_id'],
-                            // for mysql
-                            mId: manifest.data.mId,
-                            canvas_index: c_index
-                        })
-                    })
-                    // 修好顯示response
-                        .then(res = > res.json()
-                )
-                .
-                    then(text = > {
-                        console.log("回傳:" + JSON.stringify(text));
-                    if (text.text == 'add new one') {
-                        console.log("no need to update otherContent url");
-                        // console.log("anno_index為"+text.num);
-
-                        // 處理刪除bug (新增後要馬上可以刪除的)
-                        // 1. 從fetch回來的response把資料給過去
-                        // 要server resopnose 創好的 resource @id 可以得知new_anno_index
-                        new_anno_index = text.num;
-                        // 2. annoArray送他anno_index
-                        manifest.annoArray[layer._leaflet_id].anno_index = new_anno_index;
-                        json.resource['@id'] = text.resources_id;
-                        json.anno_index = new_anno_index;
-                        // 剛新增完可能要幫annoArray, annolist等等做更新
-                        // 不然會少東西
-                        // 取代原本 @id 是 default
-                        json['@id'] = canvas.otherContent[0]['@id'];
-                        manifest.annolist.push(json);
-                        // console.log("新增之後的annolist:"+ JSON.stringify(manifest.annolist));
-                    }
-                    else {
-                        // 處理新增的bug
-                        // 1. 剛新增好要更新client端的otherContent URL, 不然換頁依舊不會顯示註記(這個canvas第一次註記的話)
-                        console.log("updated otherContent Url: " + text.text);
-                        canvas.otherContent[0]['@id'] = text.text;
-                        new_anno_index = text.num;
-                        manifest.annoArray[layer._leaflet_id].anno_index = new_anno_index;
-                        json.resource['@id'] = text.resources_id;
-                        json.anno_index = new_anno_index;
-                        // 剛新增完可能要幫annoArray, annolist等等做更新
-                        // 不然會少東西
-                        // 取代原本 @id 是 default
-                        json['@id'] = canvas.otherContent[0]['@id'];
-                        manifest.annolist.push(json);
-                        // console.log("新增之後的annolist:"+ JSON.stringify(manifest.annolist));
-                    }
-                })
-
-                    // .then(function(response) {
-                    //     //處理 response
-                    //     var res_data;
-                    //     console.log('fetch to save anno is done !');
-                    //     // fail for unknown reason
-                    //     // res_data = response.text();
-                    //     // console.log("回傳:"+ res_data);
-                    //     // console.log("回傳:"+ JSON.stringify(response.body));
-                    //     // console.log("回傳:"+  response.text());
-                    //     if (res_data== 'add new one') {
-                    //         // otherContent url 沒有變的
-                    //     }else {
-                    //         // 處理新增的bug
-                    //         // 1. 剛新增好要更新client端的otherContent URL, 不然換頁依舊不會顯示註記(這個canvas第一次註記的話)
-                    //         // canvas.otherContent[0]['@id']=res_data;
-                    //     }
-                    //     // 處理新增的bug
-                    //     // 1. 剛新增好要更新client端的otherContent URL, 不然換頁依舊不會顯示註記(這個canvas第一次註記的話)
-                    //     // 直接更新 otherContent url 不管是不是第一次新增
-                    //     var new_data_url = 'http://172.16.100.20:3033/api/GET/manifest/'+manifest.data['_id'];
-                    //     var new_data = GetJSON(new_data_url);
-                    //     console.log("otherContent Url " + new_data.sequences[0].canvases[manifest.index-1].otherContent[0]['@id']);
-                    //     canvas.otherContent[0]['@id'] = new_data.sequences[0].canvases[manifest.index-1].otherContent[0]['@id'];
-                    // })
-                .
-                    catch(function (err) {
-                        // Error :(
-                        console.log(err);
-                    })
-                    // end
+                        error: function (data) {
+                            console.log(json.error);
+                        }
+                    });
 
 
                     $('#confirmOverlay').hide();
@@ -354,9 +340,12 @@
                     });
                     //do whatever you want; most likely save back to db
                     // 透過index 來取得resources的@id
-                    var edit_resources_id = manifest.annolist.find(x = > x.anno_index === edit_resources_id_index
-                )
-                    ['@id'];
+                    // var edit_resources_id = manifest.annolist.find(x => x.anno_index === edit_resources_id_index)['@id'];
+                    var found = $.grep(manifest.annolist, function (x) {
+                        return x.anno_index === edit_resources_id_index;
+                    });
+                    // console.log("jquery array find: "+JSON.stringify(found[0]));
+                    var edit_resources_id = found[0]["@id"];
                     console.log("被更新的註記的resources @id: " + edit_resources_id);
 
                     // 處理一下要給過去的anno id
@@ -369,28 +358,45 @@
                     // mysql version url
                     var updateOn_url_mysql = 'http://172.16.100.20:3033/api/PUT/anno/on/mysql';
 
-                    fetch(updateOn_url_mysql, {
-                        method: "PUT",
-                        headers: {
-                            'Accept': 'application/json, text/plain, */*',
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify({
-                            OnUrl: new_On_Url,
-                            anno_source_id: edit_resources_id,
-                            aId: the_aId[0]
-                        })
-                    })
-                        .then(function (response) {
-                            //處理 response
-                            //console.log('fetch to save anno is done !');
-                            //console.log(response);
-                        }).catch(function (err) {
-                        // Error :(
-                        console.log(err);
-                    })
+                    // fetch(updateOn_url_mysql, {
+                    //     method: "PUT",
+                    //     headers: {
+                    //         'Accept': 'application/json, text/plain, */*',
+                    //         'Content-Type': 'application/json'
+                    //     },
+                    //     body: JSON.stringify({
+                    //         OnUrl: new_On_Url,
+                    //         anno_source_id: edit_resources_id,
+                    //         aId:the_aId[0]
+                    //     })
+                    // })
+                    //     .then(function(response) {
+                    //         //處理 response
+                    //         //console.log('fetch to save anno is done !');
+                    //         //console.log(response);
+                    //     }).catch(function(err) {
+                    //     // Error :(
+                    //     console.log(err);
+                    // })
                     // end of fetch
-
+                    $.ajax({
+                        type: 'PUT',
+                        url: updateOn_url_mysql,
+                        contentType: "application/json",
+                        crossDomain: true,
+                        data:
+                            JSON.stringify({
+                                OnUrl: new_On_Url,
+                                anno_source_id: edit_resources_id,
+                                aId: the_aId[0]
+                            }), //passing data to server
+                        success: function (response) {
+                            console.log("server端response: " + response);
+                        },
+                        error: function (data) {
+                            console.log(data.error);
+                        }
+                    });
                 });
             });
             map.on('draw:deleted', function (e) {
@@ -409,32 +415,14 @@
                             manifest.annoArray[anno._leaflet_id].exist = false;
                         }
                     });
-                    //do whatever you want; most likely save back to db
-                    // 把知道要被刪除的註記index 轉換成@id
-                    // 讓mongodb可以透過此@id知道要移除哪一筆註記
 
-                    // 從array找 anno_index符合要被刪除的anno_index 的物件的@id
-                    // https://stackoverflow.com/questions/7364150/find-object-by-id-in-an-array-of-javascript-objects?utm_medium=organic&utm_source=google_rich_qa&utm_campaign=google_rich_qa
-                    var delete_data_source_id = manifest.annolist.find(x = > x.anno_index === anno_that_got_deleted
-                ).
-                    resource
-                        ['@id'];
+                    // var delete_data_source_id = manifest.annolist.find(x => x.anno_index === anno_that_got_deleted).resource['@id'];
+                    var found = $.grep(manifest.annolist, function (x) {
+                        return x.anno_index === anno_that_got_deleted;
+                    });
+                    // console.log("jquery array find: "+JSON.stringify(found[0]));
+                    var delete_data_source_id = found[0].resource["@id"];
                     console.log("被刪除的註記的source @id : " + delete_data_source_id);
-
-                    // [problem 02]
-                    // 這裡都錯的原因還未知
-                    // manifest.annolist.map(function(anno){
-                    //     if(anno_that_got_deleted == anno.anno_index){
-                    //         // 要被刪除的註記的source @id
-                    //         delete_data_source_id = manifest.annolist[anno.anno_index]['@id'];
-                    //         // 這裡取到的index是最後一個非要被刪的
-                    //         // 造成更新也會有問題
-                    //         // 問題same
-                    //         console.log(manifest.annolist[anno_that_got_deleted]);
-                    //          console.log("被刪除的註記的source @id : "+delete_data_source_id);
-                    //     }
-                    // });
-
 
                     // 處理一下要給過去的anno id
                     // 直接用第一個annolist的是因為同一筆的annoId都一樣
@@ -444,26 +432,23 @@
                     // fetch 要刪除的資訊到anno API
                     // var delete_url = 'http://172.16.100.20:3033/api/DELETE/anno/mongo';
                     var delete_url_mysql = 'http://172.16.100.20:3033/api/DELETE/anno/mysql';
-                    fetch(delete_url_mysql, {
-                        method: "DELETE",
-                        headers: {
-                            'Accept': 'application/json, text/plain, */*',
-                            'Content-Type': 'application/json'
+                    $.ajax({
+                        type: 'DELETE',
+                        url: delete_url_mysql,
+                        contentType: "application/json",
+                        crossDomain: true,
+                        data:
+                            JSON.stringify({
+                                resource_id: delete_data_source_id,
+                                aId: the_aId[0]
+                            }), //passing data to server
+                        success: function (response) {
+                            console.log("server端response: " + response);
                         },
-                        body: JSON.stringify({
-                            resource_id: delete_data_source_id,
-                            aId: the_aId[0]
-                        })
-                    })
-                        .then(function (response) {
-                            //處理 response
-                            //console.log('fetch to save anno is done !');
-                            //console.log(response);
-                        }).catch(function (err) {
-                        // Error :(
-                        console.log(err);
-                    })
-                    // end of fetch
+                        error: function (data) {
+                            console.log(data.error);
+                        }
+                    });
                 });
             });
             map.on('click', function (event) {
@@ -473,6 +458,32 @@
             });
             return map;
         }
+
+            function check_manifest(URI) {
+                // based on data-url to POST manifest API
+                // and API will determine to return an already exist manifest URI
+                // 回傳getJSON可以ajax GET 的URI
+                // or create a new one then return
+                var URI_split = URI.split('/').pop();
+                console.log(URI_split);
+                var url = 'http://172.16.100.20:3033/api/GET/manifest/check/' + URI_split;
+                $.ajax({
+                    type: 'GET',
+                    url: url,
+                    contentType: "application/json",
+                    crossDomain: true,
+                    success: function (response) {
+                        console.log('mId: ');
+                        console.log(response);
+                        data = GetJSON(response);
+                        return response;
+                    },
+                    error: function (data) {
+                        console.log(data.error);
+                    }
+                });
+
+            }
 
         function mousemoveOnMap(e) {
             $('.annoClickOuter').hide();
@@ -484,11 +495,10 @@
             LabelPosition(map.latLngToContainerPoint(e.latlng));
         }
 
-        function formatFloat(num, pos) {
+            function formatFloat(num, pos) {
             var size = Math.pow(10, pos);
             return Math.round(num * size) / size;
         }
-
         /**將經緯度轉成正常的pixel*/
         function convert_latlng_SVG(points) {
             var array = [];
@@ -501,7 +511,7 @@
             return array;
         }
 
-        function backgroundLabelSwitch(l) {
+            function backgroundLabelSwitch(l) {
             if (l != 0) {
                 $('#labelClose').click(function () {
                     $('#backgroundLabel').hide();
@@ -511,7 +521,6 @@
                 $('#backgroundLabel').hide();
             }
         }
-
         /*annotation*/
         function annotation(resources) {
             $.each(resources, function (i, value) {
@@ -572,46 +581,54 @@
             });
         }
 
-        function labelBinding(layer, chars, value) {
-
+            function labelBinding(layer, chars, value) {
             var titleChars = titlize(chars);
-            var htmlTag = '<div id="anno' + layer._leaflet_id + '" class="tipbox"><a class="tip" style="background-color:' + colorArray[layer._leaflet_id % 15] + ';"></a><a class="tipTitle">' + titleChars + '</a></div>';
+                var htmlTag = '<div id="anno' + layer._leaflet_id + '" class="tipbox"><a class="tip" style="background-color:' + colorArray[layer._leaflet_id % 15] + ';"></a><a class="tipTitle">' + titleChars + '</a></div>';
             var annolabel = $(htmlTag);
             $('#backgroundLabel').append(annolabel);
-            var annoClickStr = '<div id="annoClick' + layer._leaflet_id + '" class="annoClickOuter"><div class="blankLine"></div>' +
-                '<div class="annoClickInnerUp" style="background-color:' + colorArray[layer._leaflet_id % 15] + ';"></div>' +
-                '<div class="annoClickInnerDown">' +
-                '<div class="annoClickChars">' + chars + '</div>' +
-                '<div class="annoClickMetadata">' + ((value) ? value.metadata[0].value : '') + '</div>' +
-                '<div class="annoClickMetadata">' + ((value) ? value.metadata[1].value[1]['@value'] : '') + '</div>' +
-                '</div>' +
+                var annoClickStr = '<div id="annoClick' + layer._leaflet_id + '" class="annoClickOuter"><div class="blankLine"></div>' +
+                    '<div class="annoClickInnerUp" style="background-color:' + colorArray[layer._leaflet_id % 15] + ';"></div>' +
+                    '<div class="annoClickInnerDown">' +
+                    '<div class="annoClickChars">' + chars + '</div>' +
+                    '<div class="annoClickMetadata">' + ((value) ? value.metadata[0].value : '') + '</div>' +
+                    '<div class="annoClickMetadata">' + ((value) ? value.metadata[1].value[1]['@value'] : '') + '</div>' +
+                    '</div>' +
                 '</div>';
             var clickEventPane = $(annoClickStr);
             $('#clickEventLabel').append(clickEventPane);
+                // $(".annoClickChars").dblclick(function(e){
+                //     e.preventDefault();
+                //     map.off('mousemove');
+                //     // console.log('double click run');
+                //     // $(".annoClickChars").unbind('dblclick');
+                //     textEditorOnDblclick(e);
+                // });
+                $('#anno' + layer._leaflet_id).click(function () {
+                    annoLableClick(manifest.annoArray[layer._leaflet_id]);
+                });
+            }
+
             $(".annoClickChars").dblclick(function (e) {
                 e.preventDefault();
                 map.off('mousemove');
-                console.log('double click run');
-                //$(".annoClickChars").unbind('dblclick');
+                // console.log('double click run');
+                // $(".annoClickChars").unbind('dblclick');
                 textEditorOnDblclick(e);
             });
-            $('#anno' + layer._leaflet_id).click(function () {
-                annoLableClick(manifest.annoArray[layer._leaflet_id]);
-            });
-        }
 
-        function textEditorOnDblclick(e) {
+            function textEditorOnDblclick(e) {
             let oldText = e.target.innerText;
+                // console.log(e.target);
             $(e.target).empty();
-            var editor = $('<textarea class="newTextEditor" rows="2" cols="24">' + oldText + '</textarea>');
+                var editor = $('<textarea class="newTextEditor" rows="2" cols="24">' + oldText + '</textarea>');
+                console.log("oldText: " + oldText);
 
             $(e.target).append(editor);
-            $('.newTextEditor').keypress(function (e) {
+                $('.newTextEditor').keypress(function (e) {
                 process(e, this);
             });
 
         }
-
         // 處理雙擊label後的編輯註記
         function process(e) {
             var code = (e.keyCode ? e.keyCode : e.which);
@@ -655,19 +672,12 @@
                     }
                 });
 
-                source_id_prefix = manifest.annolist.find(x = > x.anno_index === source_id_index
-            ).
-                resource
-                    ['@id'];
-
-                // [problem 02]
-                // 錯的跟刪除的錯誤一樣原因尚不知道
-                // manifest.annolist.map(function(anno){
-                //     if(source_id_index == anno.anno_index){
-                //         // 要被update的註記的source @id
-                //         source_id_prefix = manifest.annolist[anno.anno_index]['@id'];
-                //     }
-                // });
+                // source_id_prefix = manifest.annolist.find(x => x.anno_index === source_id_index).resource['@id'];
+                var found = $.grep(manifest.annolist, function (x) {
+                    return x.anno_index === source_id_index;
+                });
+                // console.log("jquery array find: "+JSON.stringify(found[0]));
+                var source_id_prefix = found[0].resource['@id'];
 
                 // fetch to update
                 var cut_id = source_id_prefix.split("body_").pop();
@@ -675,30 +685,46 @@
                 // anno_objID[0]才是 註記的obj ID
                 var update_url = "http://172.16.100.20:3033/api/PUT/anno/mongo/" + anno_objID[0];
                 var update_url_mysql = "http://172.16.100.20:3033/api/PUT/anno/mysql/" + anno_objID[0];
-                fetch(update_url_mysql, {
-                    method: "PUT",
-                    headers: {
-                        'Accept': 'application/json, text/plain, */*',
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        resource_id: source_id_prefix,
-                        text: newText
-                    })
-                })
-                    .then(function (response) {
-                        //處理 response
-                        //console.log('fetch to save anno is done !');
-                        //console.log(response);
-                    }).catch(function (err) {
-                    // Error :(
-                    console.log(err);
-                })
+                // fetch(update_url_mysql, {
+                //     method: "PUT",
+                //     headers: {
+                //         'Accept': 'application/json, text/plain, */*',
+                //         'Content-Type': 'application/json'
+                //     },
+                //     body: JSON.stringify({
+                //         resource_id: source_id_prefix,
+                //         text: newText
+                //     })
+                // })
+                //     .then(function(response) {
+                //         //處理 response
+                //         //console.log('fetch to save anno is done !');
+                //         //console.log(response);
+                //     }).catch(function(err) {
+                //     // Error :(
+                //     console.log(err);
+                // })
                 // end of fetch
+                $.ajax({
+                    type: 'PUT',
+                    url: update_url_mysql,
+                    contentType: "application/json",
+                    crossDomain: true,
+                    data:
+                        JSON.stringify({
+                            resource_id: source_id_prefix,
+                            text: newText
+                        }), //passing data to server
+                    success: function (response) {
+                        console.log("server端response: " + response);
+                    },
+                    error: function (data) {
+                        console.log(data.error);
+                    }
+                });
 
             }
         }
-
         /*str to rotation point*/
         function strToPoint(str) {
             var canvasSize = manifest.canvasSize
@@ -747,7 +773,6 @@
             }
             return request;
         }
-
         /*change page function*/
         function change() {
             //  leaflet remove 似乎與Uncaught TypeError: Cannot read property '_leaflet_pos' of undefined 錯誤有關
@@ -759,29 +784,28 @@
             manifest.leaflet = leafletMap();
         }
 
-        function add_rotation_button() {
-            var div = $('<div class= "leaflet-control-layers leaflet-control" style="padding-top: 5px;"></div>');
+            function add_rotation_button() {
+                var div = $('<div class= "leaflet-control-layers leaflet-control" style="padding-top: 5px;"></div>');
             var reset = $('<div class="leaflet-control-layers-base reset canvasBtn" aria-hidden="true"><span class="fa fa-home fa-2x"></span></div>');
-            var rotationL = $('<div class="leaflet-control-layers-base rotation canvasBtn" aria-hidden="true"><span class="fa fa-undo fa-2x"  value="270"></span></div>');
-            var rotationR = $('<div class="leaflet-control-layers-base rotation canvasBtn" aria-hidden="true"><span class="fa fa-repeat fa-2x" value="90" ></span></div>');
+                var rotationL = $('<div class="leaflet-control-layers-base rotation canvasBtn" aria-hidden="true"><span class="fa fa-undo fa-2x"  value="270"></span></div>');
+                var rotationR = $('<div class="leaflet-control-layers-base rotation canvasBtn" aria-hidden="true"><span class="fa fa-repeat fa-2x" value="90" ></span></div>');
             var separatorL = $('<div class="vertical_separator" ></div>');
             var separatorR = $('<div class="vertical_separator"></div>');
-            div.append(rotationL, separatorL, reset, separatorR, rotationR);
+                div.append(rotationL, separatorL, reset, separatorR, rotationR);
             $($('.leaflet-top.leaflet-left')[0]).prepend(div);
-            $('.reset').click(function () {
+                $('.reset').click(function () {
                 manifest.leaflet.remove();
                 manifest.currenRotation = 0;
                 manifest.leaflet = leafletMap();
             });
-            $('.rotation').click(function (e) {
+                $('.rotation').click(function (e) {
                 manifest.leaflet.remove();
-                manifest.currenRotation += parseInt(e.target.getAttribute("value"));
-                manifest.currenRotation = (manifest.currenRotation >= 360) ? manifest.currenRotation - 360 : manifest.currenRotation;
+                    manifest.currenRotation += parseInt(e.target.getAttribute("value"));
+                    manifest.currenRotation = (manifest.currenRotation >= 360) ? manifest.currenRotation - 360 : manifest.currenRotation;
                 manifest.leaflet = leafletMap();
 
             });
         }
-
         /*page change right/left button*/
         function add_chose_button() {
             var div = $('<div class= "leaflet-control-layers leaflet-control" style="padding-top: 5px;"></div>');
@@ -848,41 +872,40 @@
         }
 
         /* rotation for mouse moving   */
-        function enterorleave(latLng, i) {
-            if (manifest.currenRotation == 0 || manifest.currenRotation == 180) {
+            function enterorleave(latLng, i) {
+                if (manifest.currenRotation == 0 || manifest.currenRotation == 180) {
                 return (latLng.lat < manifest.annoArray[i].point.min.lat) && (latLng.lat > manifest.annoArray[i].point.max.lat)
                     && (latLng.lng > manifest.annoArray[i].point.min.lng) && (latLng.lng < manifest.annoArray[i].point.max.lng);
-            } else if (manifest.currenRotation == 90) {
+                } else if (manifest.currenRotation == 90) {
                 return (latLng.lat > manifest.annoArray[i].point.min.lat) && (latLng.lat < manifest.annoArray[i].point.max.lat)
                     && (latLng.lng > manifest.annoArray[i].point.min.lng) && (latLng.lng < manifest.annoArray[i].point.max.lng);
-            } else if (manifest.currenRotation == 270) {
+                } else if (manifest.currenRotation == 270) {
                 return (latLng.lat < manifest.annoArray[i].point.min.lat) && (latLng.lat > manifest.annoArray[i].point.max.lat)
                     && (latLng.lng < manifest.annoArray[i].point.min.lng) && (latLng.lng > manifest.annoArray[i].point.max.lng);
             }
         }
-
         /*check mouse on annotation*/
-        function annoMousemove(latLng, anno_latLng_array_IDs, clicked) {
-            manifest.annoArray.map(function (anno) {
-                if (anno) {
+            function annoMousemove(latLng, anno_latLng_array_IDs, clicked) {
+                manifest.annoArray.map(function (anno) {
+                    if (anno) {
                     var i = anno._leaflet_id;
                     //console.log(latLng);
-                    if (enterorleave(latLng, i)) {
+                        if (enterorleave(latLng, i)) {
 
                         if (manifest.annoArray[i].preMouseStatus != 'mouseenter') {
                             manifest.annoArray[i].preMouseStatus = 'mouseenter';
 
                             // console.log("現在指標指到_leaflet_id 為 "+ i + " 的註記");
-                            console.log("指到的註記的annoArray為 " + JSON.stringify(manifest.annoArray[i]));
-                            console.log("指到的註記的index為 " + manifest.annoArray[i].anno_index);
+                            // console.log("指到的註記的annoArray為 "+ JSON.stringify(manifest.annoArray[i]));
+                            // console.log("指到的註記的index為 "+ manifest.annoArray[i].anno_index);
                             // console.log("整個annoArray為 "+ JSON.stringify(manifest.annoArray));
                         }
-                        if (clicked == 'click' && manifest.annoArray[i].target == 'target') {
+                            if (clicked == 'click' && manifest.annoArray[i].target == 'target') {
                             $('#backgroundLabel').hide();
                             $('#clickEventLabel').show();
-                            $('#annoClick' + manifest.annoArray[i]._leaflet_id).show();
-                            console.log("anno clicked");
-                            console.log(manifest.annoArray[i]);
+                                $('#annoClick' + manifest.annoArray[i]._leaflet_id).show();
+                                // console.log("anno clicked");
+                                // console.log(manifest.annoArray[i]);
                         }
                         anno_latLng_array_IDs.push(i);
 
@@ -895,7 +918,6 @@
 
             });
         }
-
         /**backgroundLabel*/
         function backgroundLabel() {
             $('#backgroundLabel').remove();
@@ -904,52 +926,52 @@
             $('#backgroundLabel').hide();
         }
 
-        function clickEventLabel() {
+            function clickEventLabel() {
             $('#clickEventLabel').remove();
             var clickEventLabel = $('<div id = "clickEventLabel" ></div>');
             $('body').append(clickEventLabel);
             $('#clickEventLabel').hide();
         }
 
-        function annoShowByArea(arr) {
+            function annoShowByArea(arr) {
             var array = [];
             var prems = '';
-            manifest.annoArray.map(function (anno) {
+                manifest.annoArray.map(function (anno) {
                 var i = anno._leaflet_id;
                 prems = arr[i].preMouseStatus;
-                if (prems == 'mouseenter') {
-                    array.push(arr[i]);
-                }
+                    if (prems == 'mouseenter') {
+                        array.push(arr[i]);
+                    }
             });
 
-            var elem = (manifest.currenRotation == 90 || manifest.currenRotation == 270) ? Math.max.apply(Math, array.map(function (o) {
-                return o.area;
-            })) : Math.min.apply(Math, array.map(function (o) {
-                return o.area;
-            }));
+                var elem = (manifest.currenRotation == 90 || manifest.currenRotation == 270) ? Math.max.apply(Math, array.map(function (o) {
+                    return o.area;
+                })) : Math.min.apply(Math, array.map(function (o) {
+                    return o.area;
+                }));
             var minelem;
-            array.forEach(function (e) {
-                if (e.area == elem) {
-                    minelem = e;
+                array.forEach(function (e) {
+                    if (e.area == elem) {
+                        minelem = e;
                 }
             });
-            manifest.annoArray.map(function (anno) {
+                manifest.annoArray.map(function (anno) {
                 var i = anno._leaflet_id;
-                $('#anno' + i).hide();
+                    $('#anno' + i).hide();
                 manifest.annoArray[i].target = '';
-                d3.select($('path#' + i)[0])
+                    d3.select($('path#' + i)[0])
                     .transition()
                     .duration(350)
                     .attr({
                         stroke: '#3388ff'
                     })
             });
-            manifest.annoArray.map(function (anno) {
+                manifest.annoArray.map(function (anno) {
                 var i = anno._leaflet_id;
-                if (typeof minelem != 'undefined') {
-                    if (minelem.area == arr[i].area && minelem.overlay == 'add' && minelem.exist) {
-                        $('#anno' + i).show();
-                        d3.select($('path#' + i)[0])
+                    if (typeof minelem != 'undefined') {
+                        if (minelem.area == arr[i].area && minelem.overlay == 'add' && minelem.exist) {
+                            $('#anno' + i).show();
+                            d3.select($('path#' + i)[0])
                             .transition()
                             .duration(100)
                             .attr({
@@ -967,19 +989,24 @@
             var data1 = manifest.data;
             var metadata = data1.metadata;
             var p;
-            metadata.forEach((val) = > {
-                if(typeof val.value == 'object'
-        )
-            {
-                val.value.forEach((lan) = > {
-                    if(lan['@language'] == window.navigator.language
-            )
-                {
-                    p = lan['@value'];
+            for (let index = 0; index < metadata.length; index++) {
+                const val = metadata[index];
+                if (typeof val.value == 'object') {
+                    for (let index = 0; index < val.value.length; index++) {
+                        const lan = val.value[index];
+                        if (lan['@language'] == window.navigator.language) {
+                            p = lan['@value'];
+                        }
+                    }
                 }
-            })
             }
-        })
+            manifest.id = manifest.data['@id'];
+
+            // console.log("manifest");
+            // to log object, must contain only object
+            // https://stackoverflow.com/questions/957537/how-can-i-display-a-javascript-object
+            // console.log(manifest);
+
             var div = $('<div class="leaflet-control-layers leaflet-control "></div>');
             var icon = $('<i id="infoBtn" class="fa fa-info-circle fa-3x" aria-hidden="true"></i>');
             icon.click(function () {
@@ -1013,7 +1040,6 @@
 
 
         }
-
         /*Label position*/
         function LabelPosition(point) {
             x = point.x + viewer_offset.left;
@@ -1021,7 +1047,6 @@
             $('#backgroundLabel').css({'left': x, 'top': y});
             $('#clickEventLabel').css({'left': x, 'top': y});
         }
-
         /*formate string to html innerHTML*/
         function formateStr(str) {
             var div = document.createElement("div");
@@ -1032,7 +1057,6 @@
                 return '無描述';
             return div.innerText;
         }
-
         /*titlize chars*/
         function titlize(str) {
             if (str == '')
@@ -1040,11 +1064,11 @@
 
             return str;//str.substring(0, 9) + '...';
         }
-
         function annoLableClick(arr) {
             $('#backgroundLabel').hide();
             $('#clickEventLabel').show();
             $('#annoClick' + arr._leaflet_id).show();
         }
+        });
     }
 })(jQuery);
