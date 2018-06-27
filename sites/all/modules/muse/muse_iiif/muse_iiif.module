@@ -1,5 +1,57 @@
 <?php
 
+function muse_iiif_library()
+{
+    $libraries['show_anno'] = array(
+        'title' => 'Show annotations',
+        'website' => 'http://172.16.100.19:8884/iiif',
+        'version' => '1.0',
+        'js' => array(
+            // common
+            drupal_get_path('module', 'iiifViewer') . '/js/d3.min.js' => array(),
+            drupal_get_path('module', 'iiifViewer') . '/js/leaflet.js' => array(),
+            drupal_get_path('module', 'iiifViewer') . '/js/leaflet.label.js' => array(),
+            drupal_get_path('module', 'iiifViewer') . '/js/leaflet.zoomhome.min.js' => array(),
+            drupal_get_path('module', 'iiifViewer') . '/js/leaflet-iiif.js' => array(),
+
+            drupal_get_path('module', 'iiifViewer') . '/js/show.js' => array(),
+
+        ),
+        'css' => array(
+            drupal_get_path('module', 'iiifViewer') . '/css/show.css' => array(),
+        ),
+    );
+
+    $libraries['manage_anno'] = array(
+        'title' => 'Show annotations',
+        'website' => 'http://172.16.100.19:8884/iiif',
+        'version' => '1.0',
+        'js' => array(
+            // common
+            drupal_get_path('module', 'muse_iiif') . '/js/d3.min.js' => array(),
+            drupal_get_path('module', 'muse_iiif') . '/js/leaflet.js' => array(),
+            drupal_get_path('module', 'muse_iiif') . '/js/leaflet.draw.js' => array(),
+            drupal_get_path('module', 'muse_iiif') . '/js/leaflet.label.js' => array(),
+            drupal_get_path('module', 'muse_iiif') . '/js/leaflet.zoomhome.min.js' => array(),
+            drupal_get_path('module', 'muse_iiif') . '/js/leaflet-iiif.js' => array(),
+
+            // for showing viewer
+//            drupal_get_path('module', 'muse_iiif') . '/js/tinymce.min.js' => array(),
+            drupal_get_path('module', 'muse_iiif') . '/js/api.js' => array(),
+//            drupal_get_path('module', 'iiifViewer') . '/src/js/leaflet-iiif.js' => array(),
+        ),
+        'css' => array(
+            drupal_get_path('module', 'muse_iiif') . '/css/leaflet.css' => array(),
+            drupal_get_path('module', 'muse_iiif') . '/css/leaflet.draw.css' => array(),
+            drupal_get_path('module', 'muse_iiif') . '/css/leaflet.label.css' => array(),
+            drupal_get_path('module', 'muse_iiif') . '/css/leaflet.zoomhome.css' => array(),
+            drupal_get_path('module', 'muse_iiif') . '/css/api.css' => array(),
+            drupal_get_path('module', 'muse_iiif') . '/css/popout.css' => array(),
+        ),
+    );
+
+    return $libraries;
+}
 
 function muse_iiif_menu()
 {
@@ -22,7 +74,6 @@ function muse_iiif_menu()
     return $items;
 
 }
-
 
 /**
  * Implementation of hook_theme().
@@ -84,40 +135,70 @@ function _muse_iiif_template_preprocess(&$variables)
     static $index = 0;
 
     #libraries_load('leaflet');
-    libraries_load('openseadragon');
-    #drupal_add_js(drupal_get_path('module', 'muse_iiif').'/js/leaflet-iiif.js');
 
-    drupal_add_css('
-	.iiif-viewer {
-		width:100%;
-		height:800px;
-		text-align:center;
-  }
+//    libraries_load('openseadragon');
 
-  .leaflet-container {
-		background: black;
-  }
-	#leafletMouseWheelTip{
-    color: black;
-    background-color: #f5f5dc;
-    position: absolute;
-    border-radius: 5px 5px 5px 5px;
-    opacity: 0.8;
-    font: bold;
-    font-weight: bold;
-    white-space: nowrap;
-    padding: 5px;
-  }		
-			
-	', 'inline');
+    // iiif
+    drupal_add_library('muse_iiif', 'manage_anno');
+    drupal_add_js(drupal_get_path('module', 'muse_iiif') . '/js/leaflet-iiif.js');
+    drupal_add_css('http://maxcdn.bootstrapcdn.com/font-awesome/4.3.0/css/font-awesome.min.css', array('type' => 'external'));
+    drupal_add_css(drupal_get_path('module', 'muse_iiif') . '/css/coordinate.css');
+    drupal_add_js(drupal_get_path('module', 'muse_iiif') . '/js/tinymce.min.js');
 
-    drupal_add_js(drupal_get_path('module', 'muse_iiif') . '/muse_iiif.js');
+    // 強制給tinymce會用到的附件
+    // D7 這樣就可以work 但是muse_test不能
+    drupal_add_js(drupal_get_path('module', 'muse_iiif') . '/js/themes/modern/theme.min.js');
+    drupal_add_css(drupal_get_path('module', 'muse_iiif') . '/js/skins/lightgray/skin.min.css');
+    // above work instancely, library will have serious delay
+
+//    drupal_add_css('
+//	.iiif-viewer {
+//		width:100%;
+//		height:800px;
+//		text-align:center;
+//  }
+//
+//  .leaflet-container {
+//		background: black;
+//  }
+//	#leafletMouseWheelTip{
+//    color: black;
+//    background-color: #f5f5dc;
+//    position: absolute;
+//    border-radius: 5px 5px 5px 5px;
+//    opacity: 0.8;
+//    font: bold;
+//    font-weight: bold;
+//    white-space: nowrap;
+//    padding: 5px;
+//  }
+//	', 'inline');
+
+//    drupal_add_js(drupal_get_path('module', 'muse_iiif') . '/muse_iiif.js');
+
     $js_options = array('type' => 'inline', 'scope' => 'footer', 'weight' => 3);
 
+//    drupal_add_js('
+//(function ($){
+//	$(".iiif-viewer").viewer();
+//})(jQuery);
+//', $js_options);
+
+    // iiif
+    drupal_add_js("
+    tinymce.init({ selector:'textarea'  ,
+        toolbar_items_size: 'small',
+        menubar: false,
+        toolbar: [
+            'undo redo | styleselect | bold italic | link image |alignleft aligncenter alignright'
+        ]
+    });
+", $js_options);
+
     drupal_add_js('
-(function ($){   
-	$(".iiif-viewer").viewer();
-})(jQuery);
+    (function($) {
+        $(".iiif-viewer").work();
+    })(jQuery);
 ', $js_options);
 
 }
