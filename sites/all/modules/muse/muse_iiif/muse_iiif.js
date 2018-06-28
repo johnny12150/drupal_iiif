@@ -31,18 +31,23 @@ window.checkMobileAndTablet = function () {
             console.log(viewer);
 
             // check if viewer is generated
-            if (viewer.find(".openseadragon-container").length !== 0) {
+            if (viewer.find(".iiif-viewer").length !== 0) {
                 console.log("ignore");
                 continue;
             }
+            // if (viewer.find(".openseadragon-container").length !== 0) {
+            //     console.log("ignore");
+            //     continue;
+            // }
 
             // setting the attribute id to the .iiif-viewer div
             viewer.attr('id', "viewer" + index);
 
             console.log(viewer.attr('id', "viewer" + index));
 
-            // var iiifViewer;
+            var current_viewer = "#viewer" + index;
 
+            $(current_viewer).work();
 
             // var seadragonViewer = OpenSeadragon({
             //     id: "viewer" + index,
@@ -55,11 +60,12 @@ window.checkMobileAndTablet = function () {
             // seadragonViewer.addHandler('full-page', function (event) {
 
 
-            //     window.setTimeout(function () {
-            //         for (let index = 0; index < virwerArray.length; index++) {
-            //             virwerArray[index].viewport.goHome(false);
-            //         }
-            //     }, 200);
+            // window.setTimeout(function () {
+            //     for (let index = 0; index < virwerArray.length; index++) {
+            //         virwerArray[index].viewport.goHome(false);
+            //     }
+            // }, 200);
+
             //
             //     // in full screen don't need to block mouse drag and zoom
             //     if (!isMobile) {
@@ -67,9 +73,12 @@ window.checkMobileAndTablet = function () {
             //     }
             //
             //     if (!event.fullPage) {
-            //         // handle image disappear after exit full screen
+            // //         // handle image disappear after exit full screen
             //         var mainCarousel = $('.main-carousel');
-            //         var index = mainCarousel.slick('slickCurrentSlide');
+            //
+            //         var indexing = mainCarousel.slick('slickCurrentSlide');
+            //         console.log(mainCarousel);
+            //          // var indexing = mainCarousel.slickCurrentSlide();
             //         // recrate slick
             //         mainCarousel.slick('unslick');
             //         mainCarousel.slick({
@@ -87,15 +96,12 @@ window.checkMobileAndTablet = function () {
             //                 }
             //             }, ]
             //         });
-            //         mainCarousel.slick('slickGoTo', index);
+            //         mainCarousel.slick('slickGoTo', indexing);
             //     }
-
-
             // });
             // virwerArray.push(seadragonViewer);
 
-
-            // virwerArray.push(iiifViewer);
+            // virwerArray.push(viewer);
         }
 
         // setup keyboard event
