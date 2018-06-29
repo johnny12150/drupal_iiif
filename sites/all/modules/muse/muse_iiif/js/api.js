@@ -8,7 +8,9 @@
             // and API will determine to return an already exist manifest URI
             // 回傳getJSON可以ajax GET 的URI
             // or create a new one then return
-            var URI = $('.iiif-viewer').attr('data-url');
+            var current_id = _this.attr('id');
+            var URI_num = '#' + current_id;
+            var URI = $(URI_num).attr('data-url');
             var URI_split = URI.split('/').pop();
             console.log(URI_split);
             var url = 'http://172.16.100.20:3033/api/GET/manifest/check/' + URI_split;
@@ -18,8 +20,8 @@
                 contentType: "application/json",
                 crossDomain: true,
                 success: function (response) {
-                    console.log('mId: ');
-                    console.log(response);
+                    // console.log('mId: ');
+                    // console.log(response);
                     var uri = 'http://172.16.100.20:3033/api/GET/' + response + '/manifest';
                     callback(uri);
                 },
@@ -38,14 +40,23 @@
             var href = window.location.href;
             var manifestarr = URLToArray(href);
             var url = manifestarr['manifest'];
-            _this.attr('id', 'main');
-            var elem = '#main';
+            // _this.attr('id', 'main');
+            // var elem = '#main';
+            // 為了配合muse_iiif的slick.js
+            var current_id = _this.attr('id');
+            var id_num = current_id.split('viewer').pop();
+            // console.log(id_num);
+            // console.log(current_id);
+            var elem = '#' + current_id;
             var map;
             var viewer_offset;
             // var data = GetJSON(url);
             var data = GetJSON(manifest_url);
             var zoomtemp;
-            var div = $('<div id ="mapid" class="mapid"></div>');
+            // var div = $('<div id ="mapid" class="mapid"></div>');
+            var map_selector = '<div id ="mapid' + id_num + '" class="mapid"></div>';
+            var map_id = '#mapid' + id_num;
+            var div = $(map_selector);
             $(elem).append(div);
             manifest.data = data;
             manifest.element = elem;
@@ -66,7 +77,8 @@
             function leafletMap() {
                 var canvas = manifest.currenCanvas;
                 viewer_offset = $(_this).offset();
-                var winSize = {y: $('#mapid')[0].clientHeight, x: $('#mapid')[0].clientWidth};
+                // var winSize = {y: $('#mapid')[0].clientHeight, x: $('#mapid')[0].clientWidth};
+                var winSize = {y: $(map_id)[0].clientHeight, x: $(map_id)[0].clientWidth};
                 let url = canvas.images[0].resource.service['@id'] + '/info.json';
                 var data = GetJSON(url);
 
@@ -79,7 +91,9 @@
                 }
                 // console.log("project zoom value:"+zoomtemp);
 
-                map = L.map('mapid', {
+                var map_num = 'mapid' + id_num;
+                // map = L.map('mapid', {
+                map = L.map(map_num, {
                     crs: L.CRS.Simple,
                     center: [0, 0],
                     zoom: 18,
@@ -146,7 +160,7 @@
                 /*繪圖開始*/
                 // add_chose_button();
                 add_rotation_button();
-                add_info_button();
+                // add_info_button();
 
                 map.on(L.Draw.Event.DRAWSTART, function (event) {
                     $(document).mousemove(function (event) {
@@ -455,6 +469,8 @@
                     var anno_latLng_array_IDs = [];
                     annoMousemove(latLng, anno_latLng_array_IDs, 'click');
                 });
+
+                ctrl_zoom();
                 return map;
             }
 
@@ -486,13 +502,14 @@
             }
 
             function backgroundLabelSwitch(l) {
+                var background_id = '#backgroundLabel' + id_num;
                 if (l != 0) {
                     $('#labelClose').click(function () {
-                        $('#backgroundLabel').hide();
+                        $(background_id).hide();
                     });
-                    $('#backgroundLabel').show();
+                    $(background_id).show();
                 } else {
-                    $('#backgroundLabel').hide();
+                    $(background_id).hide();
                 }
             }
 
@@ -560,7 +577,16 @@
                 var titleChars = titlize(chars);
                 var htmlTag = '<div id="anno' + layer._leaflet_id + '" class="tipbox"><a class="tip" style="background-color:' + colorArray[layer._leaflet_id % 15] + ';"></a><a class="tipTitle">' + titleChars + '</a></div>';
                 var annolabel = $(htmlTag);
-                $('#backgroundLabel').append(annolabel);
+                console.log(htmlTag);
+                // append fail when i try to use it on muse (D7)
+                // alternative solution:
+                // https://stackoverflow.com/questions/3636401/jquery-append-to-multiple-elements-fails
+
+                var background_id = '#backgroundLabel' + id_num;
+                // $('#backgroundLabel').append(annolabel);
+                annolabel.appendTo(background_id);
+
+                // todo clickEventLabel
                 var annoClickStr = '<div id="annoClick' + layer._leaflet_id + '" class="annoClickOuter"><div class="blankLine"></div>' +
                     '<div class="annoClickInnerUp" style="background-color:' + colorArray[layer._leaflet_id % 15] + ';"></div>' +
                     '<div class="annoClickInnerDown">' +
@@ -571,6 +597,7 @@
                     '</div>';
                 var clickEventPane = $(annoClickStr);
                 $('#clickEventLabel').append(clickEventPane);
+
                 // $(".annoClickChars").dblclick(function(e){
                 //     e.preventDefault();
                 //     map.off('mousemove');
@@ -578,6 +605,7 @@
                 //     // $(".annoClickChars").unbind('dblclick');
                 //     textEditorOnDblclick(e);
                 // });
+
                 $('#anno' + layer._leaflet_id).click(function () {
                     annoLableClick(manifest.annoArray[layer._leaflet_id]);
                 });
@@ -591,6 +619,7 @@
                 textEditorOnDblclick(e);
             });
 
+            // todo: 讓textEditor根據id處理避免後面頁數無法新增註記
             function textEditorOnDblclick(e) {
                 let oldText = e.target.innerText;
                 // console.log(e.target);
@@ -770,7 +799,9 @@
                 var separatorL = $('<div class="vertical_separator" ></div>');
                 var separatorR = $('<div class="vertical_separator"></div>');
                 div.append(rotationL, separatorL, reset, separatorR, rotationR);
-                $($('.leaflet-top.leaflet-left')[0]).prepend(div);
+                var leaflet_ctrl = '#mapid' + id_num + ' .leaflet-control-container .leaflet-top.leaflet-left';
+                // $($('.leaflet-control-container.leaflet-top.leaflet-left')[0]).prepend(div);
+                $($(leaflet_ctrl)[0]).prepend(div);
                 $('.reset').click(function () {
                     manifest.leaflet.remove();
                     manifest.currenRotation = 0;
@@ -881,8 +912,9 @@
                                 // console.log("整個annoArray為 "+ JSON.stringify(manifest.annoArray));
                             }
                             if (clicked == 'click' && manifest.annoArray[i].target == 'target') {
-                                $('#backgroundLabel').hide();
-                                $('#clickEventLabel').show();
+                                var background_id = '#backgroundLabel' + id_num;
+                                $(background_id).hide();
+                                $(background_id).show();
                                 $('#annoClick' + manifest.annoArray[i]._leaflet_id).show();
                                 // console.log("anno clicked");
                                 // console.log(manifest.annoArray[i]);
@@ -901,10 +933,14 @@
 
             /**backgroundLabel*/
             function backgroundLabel() {
+                var background_id = '#backgroundLabel' + id_num;
                 $('#backgroundLabel').remove();
-                var backgroundLabel = $('<div id = "backgroundLabel" ></div>');
+                $(background_id).remove();
+                var background_div = '<div id = "backgroundLabel' + id_num + '" class="backgroundLabel"></div>';
+                // var backgroundLabel = $('<div id = "backgroundLabel" ></div>');
+                var backgroundLabel = $(background_div);
                 $('body').append(backgroundLabel);
-                $('#backgroundLabel').hide();
+                $(background_id).hide();
             }
 
             function clickEventLabel() {
@@ -1026,7 +1062,8 @@
             function LabelPosition(point) {
                 x = point.x + viewer_offset.left;
                 y = point.y + viewer_offset.top;
-                $('#backgroundLabel').css({'left': x, 'top': y});
+                $('.backgroundLabel').css({'left': x, 'top': y});
+                // todo 依照backgroundlabel方式處理clickevent
                 $('#clickEventLabel').css({'left': x, 'top': y});
             }
 
@@ -1053,6 +1090,26 @@
                 $('#backgroundLabel').hide();
                 $('#clickEventLabel').show();
                 $('#annoClick' + arr._leaflet_id).show();
+            }
+
+            function ctrl_zoom() {
+                //Use ctrl + scroll to zoom the map
+                map.scrollWheelZoom.disable();
+
+                // $("#mapid").bind('mousewheel DOMMouseScroll', function (event) {
+                $(map_id).bind('mousewheel DOMMouseScroll', function (event) {
+                    event.stopPropagation();
+                    if (event.ctrlKey == true) {
+                        event.preventDefault();
+                        map.scrollWheelZoom.enable();
+                        setTimeout(function () {
+                            map.scrollWheelZoom.disable();
+                        }, 1000);
+                    } else {
+                        map.scrollWheelZoom.disable();
+                    }
+
+                });
             }
         });
     }
