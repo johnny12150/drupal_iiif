@@ -33,6 +33,13 @@
 
         // wait for the checking progress
         wait_check(function (manifest_url) {
+            var tinymce_iframe = '<div id="confirmOverlay' + id_num + '" style="display: none;"> <div id="confirmBox">' +
+                ' <textarea' +
+                ' name="editor" id="editor" cols="30" rows="10" placeholder="123"></textarea> <div id="confirmButtons"> ' +
+                '<a id="annotation_save" class="button blue">save<span></span></a> ' +
+                '<a id="annotation_cancel" class="button gray">cancel<span></span></a> </div> </div> </div>';
+            $(body).append(tinymce_iframe);
+
             //alert('change success');
             // var _this = this;
             var colorArray = ['aqua', 'fuchsia', 'lime', 'maroon', 'navy', 'olive', 'orange', 'purple', 'red', 'silver', 'gray', 'teal', 'white', 'yellow', 'green'];
@@ -174,6 +181,7 @@
                 });
                 /*繪畫完成，記錄形狀儲存的點與其資訊*/
                 map.on(L.Draw.Event.CREATED, function (event) {
+                    var current_tinymce = '#confirmOverlay'
                     var layer = event.layer;
                     manifest.drawnItems.addLayer(layer);
                     $('#confirmOverlay').show();
@@ -471,6 +479,8 @@
                 });
 
                 ctrl_zoom();
+                console.log('viewer' + id_num);
+                console.log(JSON.stringify(manifest.annoArray));
                 return map;
             }
 
@@ -577,7 +587,7 @@
                 var titleChars = titlize(chars);
                 var htmlTag = '<div id="anno' + layer._leaflet_id + '" class="tipbox"><a class="tip" style="background-color:' + colorArray[layer._leaflet_id % 15] + ';"></a><a class="tipTitle">' + titleChars + '</a></div>';
                 var annolabel = $(htmlTag);
-                console.log(htmlTag);
+                // console.log(htmlTag);
                 // append fail when i try to use it on muse (D7)
                 // alternative solution:
                 // https://stackoverflow.com/questions/3636401/jquery-append-to-multiple-elements-fails
@@ -596,7 +606,9 @@
                     '</div>' +
                     '</div>';
                 var clickEventPane = $(annoClickStr);
-                $('#clickEventLabel').append(clickEventPane);
+                var clickEvent_id = '#clickEventLabel' + id_num;
+                $(clickEvent_id).append(clickEventPane);
+                // $('#clickEventLabel').append(clickEventPane);
 
                 // $(".annoClickChars").dblclick(function(e){
                 //     e.preventDefault();
@@ -619,16 +631,25 @@
                 textEditorOnDblclick(e);
             });
 
-            // todo: 讓textEditor根據id處理避免後面頁數無法新增註記
+            // todo: 根據id讓特定viewer處理編輯註記
             function textEditorOnDblclick(e) {
+                var newEditor = '#newTextEditor' + id_num;
                 let oldText = e.target.innerText;
+                // console.log('clicklabel num: '+ e.target.parentElement.parentElement.parentElement.id);
+                //
+                // var clicklabel_num = e.target.parentElement.parentElement.parentElement.id.split('clickEventLabel').pop();
+                //
+                // console.log('clicklabel num: '+ clicklabel_num);
                 // console.log(e.target);
+                // if(clicklabel_num == id_num)
+
                 $(e.target).empty();
-                var editor = $('<textarea class="newTextEditor" rows="2" cols="24">' + oldText + '</textarea>');
+                var editor = $('<textarea class="newTextEditor" id="newTextEditor' + id_num + '" rows="2" cols="24">' + oldText + '</textarea>');
+                console.log('editor in viewer' + id_num);
                 console.log("oldText: " + oldText);
 
                 $(e.target).append(editor);
-                $('.newTextEditor').keypress(function (e) {
+                $(newEditor).keypress(function (e) {
                     process(e, this);
                 });
 
@@ -663,8 +684,7 @@
                     console.log("new anno text: " + newText);
                     // 嘗試與annoArray連接
 
-                    // [problem 01]
-                    // array 前面會出現一堆null
+                    console.log('update in viewer' + id_num);
                     console.log(JSON.stringify(manifest.annoArray));
 
                     // 修改的註記的index
@@ -934,7 +954,7 @@
             /**backgroundLabel*/
             function backgroundLabel() {
                 var background_id = '#backgroundLabel' + id_num;
-                $('#backgroundLabel').remove();
+                // $('#backgroundLabel').remove();
                 $(background_id).remove();
                 var background_div = '<div id = "backgroundLabel' + id_num + '" class="backgroundLabel"></div>';
                 // var backgroundLabel = $('<div id = "backgroundLabel" ></div>');
@@ -944,10 +964,16 @@
             }
 
             function clickEventLabel() {
-                $('#clickEventLabel').remove();
-                var clickEventLabel = $('<div id = "clickEventLabel" ></div>');
+                var clickEvent_id = '#clickEventLabel' + id_num;
+                // $('#clickEventLabel').remove();
+                $(clickEvent_id).remove();
+                var clickEventLabel = $('<div id = "clickEventLabel' + id_num + '" class="clickEventLabel"></div>');
                 $('body').append(clickEventLabel);
-                $('#clickEventLabel').hide();
+                $(clickEvent_id).hide();
+
+                // var clickEventLabel = $('<div id = "clickEventLabel" ></div>');
+                // $('body').append(clickEventLabel);
+                // $('#clickEventLabel').hide();
             }
 
             function annoShowByArea(arr) {
@@ -1060,11 +1086,15 @@
 
             /*Label position*/
             function LabelPosition(point) {
+                var background = '#backgroundLabel' + id_num;
+                var clickEvent = '#clickEventLabel' + id_num;
                 x = point.x + viewer_offset.left;
                 y = point.y + viewer_offset.top;
-                $('.backgroundLabel').css({'left': x, 'top': y});
-                // todo 依照backgroundlabel方式處理clickevent
-                $('#clickEventLabel').css({'left': x, 'top': y});
+                $(background).css({'left': x, 'top': y});
+                // $('.backgroundLabel').css({'left': x, 'top': y});
+                $(clickEvent).css({'left': x, 'top': y});
+                // $('.clickEventLabel').css({'left': x, 'top': y});
+
             }
 
             /*formate string to html innerHTML*/
@@ -1087,8 +1117,12 @@
             }
 
             function annoLableClick(arr) {
-                $('#backgroundLabel').hide();
-                $('#clickEventLabel').show();
+                var background = '#backgroundLabel' + id_num;
+                var clickEvent = '#clickEventLabel' + id_num;
+                $(background).hide();
+                $(clickEvent).show();
+                // $('#backgroundLabel').hide();
+                // $('#clickEventLabel').show();
                 $('#annoClick' + arr._leaflet_id).show();
             }
 
