@@ -23,103 +23,29 @@ window.checkMobileAndTablet = function () {
         // OpenSeadragon.setString("Tooltips.ZoomIn", "放大");
         // OpenSeadragon.setString("Tooltips.FullPage", "全螢幕");
 
-        console.log(viewers.length);
+        // console.log(viewers.length);
 
         for (let index = 0; index < viewers.length; index++) {
             var viewer = $(viewers[index]);
 
-            console.log(viewer);
+            // console.log(viewer);
 
             // check if viewer is generated
             if (viewer.find(".iiif-viewer").length !== 0) {
                 console.log("ignore");
                 continue;
             }
-            // if (viewer.find(".openseadragon-container").length !== 0) {
-            //     console.log("ignore");
-            //     continue;
-            // }
 
             // setting the attribute id to the .iiif-viewer div
             viewer.attr('id', "viewer" + index);
 
-            console.log(viewer.attr('id', "viewer" + index));
+            // console.log(viewer.attr('id', "viewer" + index));
 
             var current_viewer = "#viewer" + index;
 
             $(current_viewer).work();
 
-            // var seadragonViewer = OpenSeadragon({
-            //     id: "viewer" + index,
-            //     prefixUrl: '/sites/all/libraries/openseadragon/images/',
-            //     tileSources: [viewer.attr('data-url') + "/info.json"],
-            //     autoHideControls: false,
-            //     //showFullPageControl: false,
-            // });
-
-            // seadragonViewer.addHandler('full-page', function (event) {
-
-
-            // window.setTimeout(function () {
-            //     for (let index = 0; index < virwerArray.length; index++) {
-            //         virwerArray[index].viewport.goHome(false);
-            //     }
-            // }, 200);
-
-            //
-            //     // in full screen don't need to block mouse drag and zoom
-            //     if (!isMobile) {
-            //         event.eventSource.setMouseNavEnabled(event.fullPage);
-            //     }
-            //
-            //     if (!event.fullPage) {
-            // //         // handle image disappear after exit full screen
-            //         var mainCarousel = $('.main-carousel');
-            //
-            //         var indexing = mainCarousel.slick('slickCurrentSlide');
-            //         console.log(mainCarousel);
-            //          // var indexing = mainCarousel.slickCurrentSlide();
-            //         // recrate slick
-            //         mainCarousel.slick('unslick');
-            //         mainCarousel.slick({
-            //             infinite: true,
-            //             speed: 500,
-            //             fade: true,
-            //             draggable: false,
-            //             dots: true,
-            //             responsive: [{
-            //                 breakpoint: 767,
-            //                 settings: {
-            //                     respondTo: 'min',
-            //                     infinite: true,
-            //                     dots: false
-            //                 }
-            //             }, ]
-            //         });
-            //         mainCarousel.slick('slickGoTo', indexing);
-            //     }
-            // });
-            // virwerArray.push(seadragonViewer);
-
-            // virwerArray.push(viewer);
         }
-
-        // setup keyboard event
-        // if (!isMobile) {
-        //     virwerArray.forEach(function (seadragonViewer) {
-        //         seadragonViewer.setMouseNavEnabled(false);
-        //     });
-        //
-        //     $('body').keyup(function (e) {
-        //         virwerArray.forEach(function (seadragonViewer) {
-        //             seadragonViewer.setMouseNavEnabled(e.ctrlKey);
-        //         });
-        //     }).keydown(function (e) {
-        //         virwerArray.forEach(function (seadragonViewer) {
-        //             seadragonViewer.setMouseNavEnabled(e.ctrlKey);
-        //         });
-        //     });
-        // }
 
     }
 })(jQuery);
