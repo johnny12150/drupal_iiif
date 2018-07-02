@@ -162,17 +162,18 @@
                 // add_info_button();
 
                 map.on(L.Draw.Event.DRAWSTART, function (event) {
+                    var current_cancel = '#annotation_cancel' + id_num;
+                    var current_save = '#annotation_save' + id_num;
                     $(document).mousemove(function (event) {
                     });
-                    $("#annotation_cancel").unbind("click");
-                    $("#annotation_save").unbind("click");
+                    $(current_cancel).unbind("click");
+                    $(current_save).unbind("click");
                 });
                 /*為annotation添增mousemove事件*/
                 map.on('mousemove', function (e) {
                     mousemoveOnMap(e)
                 });
 
-                // todo: fix creating anno
                 /*繪畫完成，記錄形狀儲存的點與其資訊*/
                 map.on(L.Draw.Event.CREATED, function (event) {
                     var current_tinymce = '#confirmOverlay' + id_num;
@@ -273,50 +274,50 @@
                         var url_mysql = 'http://172.16.100.20:3033/api/POST/anno/mysql';
                         var new_anno_index;
 
-                        // IE 11 可能不支援fetch需改成ajax
-                        // $.ajax({
-                        //     type: 'POST',
-                        //     url: url_mysql,
-                        //     contentType: "application/json",
-                        //     dataType: "json",
-                        //     crossDomain: true,
-                        //     data:
-                        //         JSON.stringify({
-                        //             anno_data: json.resource.chars,
-                        //             anno_place: json.on,
-                        //             other_content: canvas.otherContent[0]['@id'],
-                        //             mId: manifest.data.mId,
-                        //             canvas_index: c_index
-                        //         }), //passing data to server
-                        //     success: function (response) {
-                        //         var res_data = response;
-                        //         console.log(res_data);
-                        //         if (res_data.text == 'add new one') {
-                        //             console.log("no need to update otherContent url");
-                        //             console.log(res_data.resources_id);
-                        //             new_anno_index = res_data.num;
-                        //             manifest.annoArray[layer._leaflet_id].anno_index = new_anno_index;
-                        //             json.resource['@id'] = res_data.resources_id;
-                        //             json.anno_index = new_anno_index;
-                        //             // 取代原本 @id 是 default
-                        //             json['@id'] = canvas.otherContent[0]['@id'];
-                        //             manifest.annolist.push(json);
-                        //         }
-                        //         else {
-                        //             console.log("updated otherContent Url: " + res_data.text);
-                        //             canvas.otherContent[0]['@id'] = res_data.text;
-                        //             new_anno_index = res_data.num;
-                        //             manifest.annoArray[layer._leaflet_id].anno_index = new_anno_index;
-                        //             json.resource['@id'] = res_data.resources_id;
-                        //             json.anno_index = new_anno_index;
-                        //             json['@id'] = canvas.otherContent[0]['@id'];
-                        //             manifest.annolist.push(json);
-                        //         }
-                        //     },
-                        //     error: function (data) {
-                        //         console.log(json.error);
-                        //     }
-                        // });
+                        // ajax to save anno
+                        $.ajax({
+                            type: 'POST',
+                            url: url_mysql,
+                            contentType: "application/json",
+                            dataType: "json",
+                            crossDomain: true,
+                            data:
+                                JSON.stringify({
+                                    anno_data: json.resource.chars,
+                                    anno_place: json.on,
+                                    other_content: canvas.otherContent[0]['@id'],
+                                    mId: manifest.data.mId,
+                                    canvas_index: c_index
+                                }), //passing data to server
+                            success: function (response) {
+                                var res_data = response;
+                                console.log(res_data);
+                                if (res_data.text == 'add new one') {
+                                    console.log("no need to update otherContent url");
+                                    console.log(res_data.resources_id);
+                                    new_anno_index = res_data.num;
+                                    manifest.annoArray[layer._leaflet_id].anno_index = new_anno_index;
+                                    json.resource['@id'] = res_data.resources_id;
+                                    json.anno_index = new_anno_index;
+                                    // 取代原本 @id 是 default
+                                    json['@id'] = canvas.otherContent[0]['@id'];
+                                    manifest.annolist.push(json);
+                                }
+                                else {
+                                    console.log("updated otherContent Url: " + res_data.text);
+                                    canvas.otherContent[0]['@id'] = res_data.text;
+                                    new_anno_index = res_data.num;
+                                    manifest.annoArray[layer._leaflet_id].anno_index = new_anno_index;
+                                    json.resource['@id'] = res_data.resources_id;
+                                    json.anno_index = new_anno_index;
+                                    json['@id'] = canvas.otherContent[0]['@id'];
+                                    manifest.annolist.push(json);
+                                }
+                            },
+                            error: function (data) {
+                                console.log(json.error);
+                            }
+                        });
 
 
                         $(current_tinymce).hide();
@@ -1162,12 +1163,18 @@
                 });
             }
 
-            // send info to manifest API if need to create one
+            // todo: send info to manifest API if need to create one
             function pass_manifest_info() {
                 console.log($(".field.field-name-field-obj-creator.field-type-double-field.field-label-above" +
                     " .field-items .field-item.even .container-inline .double-field-first").html());
                 console.log($(".field.field-name-field-obj-creator.field-type-double-field.field-label-above" +
                     " .field-items .field-item.even .container-inline .double-field-second").html());
+                var author_name = $(".field.field-name-field-obj-creator.field-type-double-field.field-label-above" +
+                    " .field-items .field-item.even .container-inline .double-field-second").html();
+                // remove &nbsp; in the end of author
+                // reference: https://stackoverflow.com/questions/27739443/find-and-remove-words-matching-a-substring-in-a-sentence
+                author_name = author_name.replace(/\S*\&nbsp\;\S*/, '');
+                console.log(author_name);
             }
         });
     }
