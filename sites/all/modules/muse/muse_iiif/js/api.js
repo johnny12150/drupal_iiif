@@ -33,13 +33,6 @@
 
         // wait for the checking progress
         wait_check(function (manifest_url) {
-            var tinymce_iframe = '<div id="confirmOverlay' + id_num + '" style="display: none;"> <div id="confirmBox">' +
-                ' <textarea' +
-                ' name="editor" id="editor" cols="30" rows="10" placeholder="123"></textarea> <div id="confirmButtons"> ' +
-                '<a id="annotation_save" class="button blue">save<span></span></a> ' +
-                '<a id="annotation_cancel" class="button gray">cancel<span></span></a> </div> </div> </div>';
-            $(body).append(tinymce_iframe);
-
             //alert('change success');
             // var _this = this;
             var colorArray = ['aqua', 'fuchsia', 'lime', 'maroon', 'navy', 'olive', 'orange', 'purple', 'red', 'silver', 'gray', 'teal', 'white', 'yellow', 'green'];
@@ -52,6 +45,7 @@
             // 為了配合muse_iiif的slick.js
             var current_id = _this.attr('id');
             var id_num = current_id.split('viewer').pop();
+
             // console.log(id_num);
             // console.log(current_id);
             var elem = '#' + current_id;
@@ -89,7 +83,6 @@
                 let url = canvas.images[0].resource.service['@id'] + '/info.json';
                 var data = GetJSON(url);
 
-                var rotation = manifest.currenRotation;
                 manifest.annoArray = [];
                 for (zoomtemp = 0; zoomtemp < 18; zoomtemp += 1) {
                     if (Math.max(canvas.height, canvas.width) < 256 * Math.pow(2, zoomtemp)) {
@@ -120,7 +113,6 @@
                     position: 'topleft',//'topleft', 'topright', 'bottomleft' or 'bottomright'
                     collapsed: false
                 }).addTo(map);
-
 
                 if (canvas.otherContent !== undefined) {
                     var otherContent_url = canvas.otherContent[0]['@id'];
@@ -179,14 +171,19 @@
                 map.on('mousemove', function (e) {
                     mousemoveOnMap(e)
                 });
+
+                // todo: fix creating anno
                 /*繪畫完成，記錄形狀儲存的點與其資訊*/
                 map.on(L.Draw.Event.CREATED, function (event) {
-                    var current_tinymce = '#confirmOverlay'
+                    var current_tinymce = '#confirmOverlay' + id_num;
+                    var current_box = '#confirmBox' + id_num;
+                    var current_save = '#annotation_save' + id_num;
+                    var current_cancel = '#annotation_cancel' + id_num;
                     var layer = event.layer;
                     manifest.drawnItems.addLayer(layer);
-                    $('#confirmOverlay').show();
-                    var box = $('#confirmBox');
-                    var overlay = $('#confirmOverlay');
+                    $(current_tinymce).show();
+                    var box = $(current_box);
+                    var overlay = $(current_tinymce);
 
                     if (y + box.height() >= overlay.height()) {
                         if (x + box.width() >= overlay.width()) {
@@ -205,14 +202,15 @@
                             box.css('top', y);
                         }
                     } else {
-                        $('#confirmBox')
+                        $(current_box)
                             .css('left', x)
                             .css('top', y);
                     }
 
-                    $('#annotation_save').click(function (e) {
+                    $(current_save).click(function (e) {
                         manifest.countCreatAnnotation++;
                         var chars = formateStr(tinyMCE.activeEditor.getContent());
+                        console.log('chars:' + chars);
                         var zoom = manifest.leaflet.getZoom();
                         var point = strToPoint([layer._pxBounds.min.x, layer._pxBounds.min.y, layer._pxBounds.max.x - layer._pxBounds.min.x, layer._pxBounds.max.y - layer._pxBounds.min.y]);
 
@@ -276,59 +274,59 @@
                         var new_anno_index;
 
                         // IE 11 可能不支援fetch需改成ajax
-                        $.ajax({
-                            type: 'POST',
-                            url: url_mysql,
-                            contentType: "application/json",
-                            dataType: "json",
-                            crossDomain: true,
-                            data:
-                                JSON.stringify({
-                                    anno_data: json.resource.chars,
-                                    anno_place: json.on,
-                                    other_content: canvas.otherContent[0]['@id'],
-                                    mId: manifest.data.mId,
-                                    canvas_index: c_index
-                                }), //passing data to server
-                            success: function (response) {
-                                var res_data = response;
-                                console.log(res_data);
-                                if (res_data.text == 'add new one') {
-                                    console.log("no need to update otherContent url");
-                                    console.log(res_data.resources_id);
-                                    new_anno_index = res_data.num;
-                                    manifest.annoArray[layer._leaflet_id].anno_index = new_anno_index;
-                                    json.resource['@id'] = res_data.resources_id;
-                                    json.anno_index = new_anno_index;
-                                    // 取代原本 @id 是 default
-                                    json['@id'] = canvas.otherContent[0]['@id'];
-                                    manifest.annolist.push(json);
-                                }
-                                else {
-                                    console.log("updated otherContent Url: " + res_data.text);
-                                    canvas.otherContent[0]['@id'] = res_data.text;
-                                    new_anno_index = res_data.num;
-                                    manifest.annoArray[layer._leaflet_id].anno_index = new_anno_index;
-                                    json.resource['@id'] = res_data.resources_id;
-                                    json.anno_index = new_anno_index;
-                                    json['@id'] = canvas.otherContent[0]['@id'];
-                                    manifest.annolist.push(json);
-                                }
-                            },
-                            error: function (data) {
-                                console.log(json.error);
-                            }
-                        });
+                        // $.ajax({
+                        //     type: 'POST',
+                        //     url: url_mysql,
+                        //     contentType: "application/json",
+                        //     dataType: "json",
+                        //     crossDomain: true,
+                        //     data:
+                        //         JSON.stringify({
+                        //             anno_data: json.resource.chars,
+                        //             anno_place: json.on,
+                        //             other_content: canvas.otherContent[0]['@id'],
+                        //             mId: manifest.data.mId,
+                        //             canvas_index: c_index
+                        //         }), //passing data to server
+                        //     success: function (response) {
+                        //         var res_data = response;
+                        //         console.log(res_data);
+                        //         if (res_data.text == 'add new one') {
+                        //             console.log("no need to update otherContent url");
+                        //             console.log(res_data.resources_id);
+                        //             new_anno_index = res_data.num;
+                        //             manifest.annoArray[layer._leaflet_id].anno_index = new_anno_index;
+                        //             json.resource['@id'] = res_data.resources_id;
+                        //             json.anno_index = new_anno_index;
+                        //             // 取代原本 @id 是 default
+                        //             json['@id'] = canvas.otherContent[0]['@id'];
+                        //             manifest.annolist.push(json);
+                        //         }
+                        //         else {
+                        //             console.log("updated otherContent Url: " + res_data.text);
+                        //             canvas.otherContent[0]['@id'] = res_data.text;
+                        //             new_anno_index = res_data.num;
+                        //             manifest.annoArray[layer._leaflet_id].anno_index = new_anno_index;
+                        //             json.resource['@id'] = res_data.resources_id;
+                        //             json.anno_index = new_anno_index;
+                        //             json['@id'] = canvas.otherContent[0]['@id'];
+                        //             manifest.annolist.push(json);
+                        //         }
+                        //     },
+                        //     error: function (data) {
+                        //         console.log(json.error);
+                        //     }
+                        // });
 
 
-                        $('#confirmOverlay').hide();
+                        $(current_tinymce).hide();
                         tinyMCE.activeEditor.setContent('');
 
                     });
-                    $('#annotation_cancel').click(function (e) {
+                    $(current_cancel).click(function (e) {
                         manifest.drawnItems.removeLayer(layer);
                         tinyMCE.activeEditor.setContent('');
-                        $('#confirmOverlay').hide();
+                        $(current_tinymce).hide();
                     });
 
                 });
@@ -479,14 +477,15 @@
                 });
 
                 ctrl_zoom();
-                console.log('viewer' + id_num);
-                console.log(JSON.stringify(manifest.annoArray));
+                // console.log('viewer' + id_num);
+                // console.log(JSON.stringify(manifest.annoArray));
                 return map;
             }
 
             function mousemoveOnMap(e) {
+                var click = '#clickEventLabel' + id_num;
                 $('.annoClickOuter').hide();
-                $('#clickEventLabel').hide();
+                $(click).hide();
                 var anno_latLng_array_IDs = [];
                 annoMousemove(e.latlng, anno_latLng_array_IDs);
                 annoShowByArea(manifest.annoArray);
@@ -560,7 +559,12 @@
                     var latLng = L.latLngBounds(point.min, point.max);
                     layer = L.rectangle(latLng);
                     manifest.drawnItems.addLayer(layer);
-                    $('path')[$('path').length - 1].id = layer._leaflet_id;
+                    var mapId = '#mapid' + id_num;
+                    // console.log($(mapId).children().children()[2]);
+                    var certain_path = $(mapId).children().children().children().children().children('path');
+                    // console.log(layer._leaflet_id);
+                    // $('path')[$('path').length - 1].id = layer._leaflet_id;
+                    certain_path.attr('id', layer._leaflet_id);
 
                     labelBinding(layer, chars, value);
 
@@ -596,7 +600,6 @@
                 // $('#backgroundLabel').append(annolabel);
                 annolabel.appendTo(background_id);
 
-                // todo clickEventLabel
                 var annoClickStr = '<div id="annoClick' + layer._leaflet_id + '" class="annoClickOuter"><div class="blankLine"></div>' +
                     '<div class="annoClickInnerUp" style="background-color:' + colorArray[layer._leaflet_id % 15] + ';"></div>' +
                     '<div class="annoClickInnerDown">' +
@@ -631,28 +634,40 @@
                 textEditorOnDblclick(e);
             });
 
-            // todo: 根據id讓特定viewer處理編輯註記
+            // called when label is double clicked
             function textEditorOnDblclick(e) {
                 var newEditor = '#newTextEditor' + id_num;
-                let oldText = e.target.innerText;
-                // console.log('clicklabel num: '+ e.target.parentElement.parentElement.parentElement.id);
-                //
-                // var clicklabel_num = e.target.parentElement.parentElement.parentElement.id.split('clickEventLabel').pop();
-                //
-                // console.log('clicklabel num: '+ clicklabel_num);
-                // console.log(e.target);
-                // if(clicklabel_num == id_num)
+                var clicklabel_num = e.target.parentElement.parentElement.parentElement.id.split('clickEventLabel').pop();
+                // 根據id讓特定viewer處理編輯註記
+                if (clicklabel_num == id_num) {
+                    let oldText = e.target.innerText;
+                    // console.log('clicklabel id: '+ e.target.parentElement.parentElement.parentElement.id);
+                    // console.log('clicklabel num: '+ clicklabel_num);
 
-                $(e.target).empty();
-                var editor = $('<textarea class="newTextEditor" id="newTextEditor' + id_num + '" rows="2" cols="24">' + oldText + '</textarea>');
-                console.log('editor in viewer' + id_num);
-                console.log("oldText: " + oldText);
+                    $(e.target).empty();
+                    var editor = $('<textarea class="newTextEditor" id="newTextEditor' + id_num + '" rows="2" cols="24">' + oldText + '</textarea>');
+                    console.log('editor in viewer' + id_num);
+                    console.log("oldText: " + oldText);
 
-                $(e.target).append(editor);
-                $(newEditor).keypress(function (e) {
-                    process(e, this);
-                });
-
+                    $(e.target).append(editor);
+                    // auto focus
+                    $(newEditor).focus();
+                    // handle ESC
+                    $(newEditor).keyup(function (e) {
+                        if (e.keyCode === 27) {
+                            // when hitting ESC then hide the label
+                            var click = '#clickEventLabel' + id_num;
+                            $('.annoClickOuter').hide();
+                            $(click).hide();
+                            map.on('mousemove', function (e) {
+                                mousemoveOnMap(e)
+                            });
+                        }
+                    });
+                    $(newEditor).keypress(function (e) {
+                        process(e, this);
+                    });
+                }
             }
 
             // 處理雙擊label後的編輯註記
@@ -688,7 +703,6 @@
                     console.log(JSON.stringify(manifest.annoArray));
 
                     // 修改的註記的index
-                    var source_id_prefix;
                     var source_id_index;
                     manifest.annoArray.map(function (anno) {
                         if (anno._leaflet_id == annoid) {
@@ -730,6 +744,7 @@
                     //     console.log(err);
                     // })
                     // end of fetch
+
                     $.ajax({
                         type: 'PUT',
                         url: update_url_mysql,
@@ -831,8 +846,8 @@
                     manifest.leaflet.remove();
                     manifest.currenRotation += parseInt(e.target.getAttribute("value"));
                     manifest.currenRotation = (manifest.currenRotation >= 360) ? manifest.currenRotation - 360 : manifest.currenRotation;
+                    console.log(manifest.currenRotation);
                     manifest.leaflet = leafletMap();
-
                 });
             }
 
@@ -880,7 +895,7 @@
                     }
                 });
 
-            };
+            }
 
             /*get json by url*/
             function GetJSON(url) {
@@ -1126,6 +1141,7 @@
                 $('#annoClick' + arr._leaflet_id).show();
             }
 
+            // use ctrl + scroll to zoom in and out
             function ctrl_zoom() {
                 //Use ctrl + scroll to zoom the map
                 map.scrollWheelZoom.disable();
@@ -1144,6 +1160,14 @@
                     }
 
                 });
+            }
+
+            // send info to manifest API if need to create one
+            function pass_manifest_info() {
+                console.log($(".field.field-name-field-obj-creator.field-type-double-field.field-label-above" +
+                    " .field-items .field-item.even .container-inline .double-field-first").html());
+                console.log($(".field.field-name-field-obj-creator.field-type-double-field.field-label-above" +
+                    " .field-items .field-item.even .container-inline .double-field-second").html());
             }
         });
     }
