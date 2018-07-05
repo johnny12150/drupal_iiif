@@ -1,6 +1,8 @@
 (function ($) {
+    // viewer
     $.fn.work = function () {
-        //alert('change success');
+        var drupal_uid = Drupal.settings.muse_iiif.userId;
+        // console.log('uid: '+drupal_uid);
         var _this = this;
 
         var wait_check = function (callback) {
@@ -45,13 +47,9 @@
             // 為了配合muse_iiif的slick.js
             var current_id = _this.attr('id');
             var id_num = current_id.split('viewer').pop();
-
-            // console.log(id_num);
-            // console.log(current_id);
             var elem = '#' + current_id;
             var map;
             var viewer_offset;
-            // var data = GetJSON(url);
             var data = GetJSON(manifest_url);
             var zoomtemp;
             // var div = $('<div id ="mapid" class="mapid"></div>');
@@ -287,7 +285,9 @@
                                     anno_place: json.on,
                                     other_content: canvas.otherContent[0]['@id'],
                                     mId: manifest.data.mId,
-                                    canvas_index: c_index
+                                    canvas_index: c_index,
+                                    uId: drupal_uid // for verify in APIs
+                                    // todo: making sure anno API using uId to do Auth
                                 }), //passing data to server
                             success: function (response) {
                                 var res_data = response;
@@ -378,27 +378,6 @@
                         // mysql version url
                         var updateOn_url_mysql = 'http://172.16.100.20:3033/api/PUT/anno/on/mysql';
 
-                        // fetch(updateOn_url_mysql, {
-                        //     method: "PUT",
-                        //     headers: {
-                        //         'Accept': 'application/json, text/plain, */*',
-                        //         'Content-Type': 'application/json'
-                        //     },
-                        //     body: JSON.stringify({
-                        //         OnUrl: new_On_Url,
-                        //         anno_source_id: edit_resources_id,
-                        //         aId:the_aId[0]
-                        //     })
-                        // })
-                        //     .then(function(response) {
-                        //         //處理 response
-                        //         //console.log('fetch to save anno is done !');
-                        //         //console.log(response);
-                        //     }).catch(function(err) {
-                        //     // Error :(
-                        //     console.log(err);
-                        // })
-                        // end of fetch
                         $.ajax({
                             type: 'PUT',
                             url: updateOn_url_mysql,
@@ -408,7 +387,9 @@
                                 JSON.stringify({
                                     OnUrl: new_On_Url,
                                     anno_source_id: edit_resources_id,
-                                    aId: the_aId[0]
+                                    aId: the_aId[0],
+                                    uId: drupal_uid // for verify in APIs
+                                    // todo: making sure anno API using uId to do Auth
                                 }), //passing data to server
                             success: function (response) {
                                 console.log("server端response: " + response);
@@ -460,7 +441,9 @@
                             data:
                                 JSON.stringify({
                                     resource_id: delete_data_source_id,
-                                    aId: the_aId[0]
+                                    aId: the_aId[0],
+                                    uId: drupal_uid // for verify in APIs
+                                    // todo: making sure anno API using uId to do Auth
                                 }), //passing data to server
                             success: function (response) {
                                 console.log("server端response: " + response);
@@ -483,9 +466,12 @@
                 return map;
             }
 
+            // todo: fix multi viewer displaying issue
             function mousemoveOnMap(e) {
                 var click = '#clickEventLabel' + id_num;
-                $('.annoClickOuter').hide();
+                var outer = click + ' .annoClickOuter';
+                // $('.annoClickOuter').hide();
+                $(outer).hide();
                 $(click).hide();
                 var anno_latLng_array_IDs = [];
                 annoMousemove(e.latlng, anno_latLng_array_IDs);
@@ -657,12 +643,24 @@
                     $(newEditor).keyup(function (e) {
                         if (e.keyCode === 27) {
                             // when hitting ESC then hide the label
-                            var click = '#clickEventLabel' + id_num;
-                            $('.annoClickOuter').hide();
-                            $(click).hide();
+                            // var click = '#clickEventLabel' + id_num;
+                            // todo: fix - multi viewer的註記顯示怪怪，可以參考原本的api.js
+                            // $('.annoClickOuter').hide();
+                            // $('.annoClickChars').hide();
+                            // $(click).hide();
+                            var myNode = e.target.parentElement;
+                            console.log(myNode);
+                            console.log(myNode.firstChild);
+                            while (myNode.firstChild) {
+                                myNode.removeChild(myNode.firstChild);
+                            }
+                            myNode.innerHTML = oldText;
+                            console.log('after adding text: ' + myNode);
                             map.on('mousemove', function (e) {
-                                mousemoveOnMap(e)
+                                console.log(e);
+                                mousemoveOnMap(e);
                             });
+
                         }
                     });
                     $(newEditor).keypress(function (e) {
@@ -678,20 +676,21 @@
                     var annoid = e.target.parentElement.parentElement.parentElement.id;
                     var newText = e.target.value;
                     var myNode = e.target.parentElement;
-                    while (myNode.firstChild) {
-                        myNode.removeChild(myNode.firstChild);
-                    }
-                    myNode.innerHTML = newText;
+                    // while (myNode.firstChild) {
+                    //     myNode.removeChild(myNode.firstChild);
+                    // }
+                    // myNode.innerHTML = newText;
 
                     // 這個annoid就是 _leaflet_id
                     annoid = annoid.replace(/[A-Z]|[a-z]/g, "");
                     // 取舊的chars
                     console.log("old anno: " + document.getElementById("anno" + annoid).children[1].text);
+                    var old_anno = document.getElementById("anno" + annoid).children[1].text;
 
-                    document.getElementById("anno" + annoid).children[1].text = newText;
-                    map.on('mousemove', function (e) {
-                        mousemoveOnMap(e)
-                    });
+                    // document.getElementById("anno" + annoid).children[1].text = newText;
+                    // map.on('mousemove', function (e) {
+                    //     mousemoveOnMap(e)
+                    // });
 
                     // 按下enter可以結束編輯
                     // 修改註記的後端動作放以下
@@ -754,10 +753,34 @@
                         data:
                             JSON.stringify({
                                 resource_id: source_id_prefix,
-                                text: newText
+                                text: newText,
+                                uId: drupal_uid // for verify in APIs
                             }), //passing data to server
                         success: function (response) {
+                            var text = response.text();
                             console.log("server端response: " + response);
+                            //處理認證不過收到'things go sideways'時的註記label顯示
+                            if (text == 'things go sideways') {
+                                alert('Something going wrong, failed to update the annotation.');
+                                // todo: fix - multi viewer的註記顯示怪怪，可以參考原本的api.js
+                                while (myNode.firstChild) {
+                                    myNode.removeChild(myNode.firstChild);
+                                }
+                                myNode.innerHTML = old_anno;
+                                map.on('mousemove', function (e) {
+                                    mousemoveOnMap(e);
+                                });
+                            }
+                            else {
+                                while (myNode.firstChild) {
+                                    myNode.removeChild(myNode.firstChild);
+                                }
+                                myNode.innerHTML = newText;
+                                document.getElementById("anno" + annoid).children[1].text = newText;
+                                map.on('mousemove', function (e) {
+                                    mousemoveOnMap(e)
+                                });
+                            }
                         },
                         error: function (data) {
                             console.log(data.error);
@@ -933,6 +956,7 @@
 
             /*check mouse on annotation*/
             function annoMousemove(latLng, anno_latLng_array_IDs, clicked) {
+                console.log('annoMousemove active');
                 manifest.annoArray.map(function (anno) {
                     if (anno) {
                         var i = anno._leaflet_id;
@@ -1165,6 +1189,7 @@
 
             // todo: send info to manifest API if need to create one
             function pass_manifest_info() {
+                // use drupal API to do it instead of finding in html
                 console.log($(".field.field-name-field-obj-creator.field-type-double-field.field-label-above" +
                     " .field-items .field-item.even .container-inline .double-field-first").html());
                 console.log($(".field.field-name-field-obj-creator.field-type-double-field.field-label-above" +
