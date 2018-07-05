@@ -552,9 +552,24 @@
                     var mapId = '#mapid' + id_num;
                     // console.log($(mapId).children().children()[2]);
                     var certain_path = $(mapId).children().children().children().children().children('path');
-                    // console.log(layer._leaflet_id);
+
+                    // https://stackoverflow.com/questions/18016766/jquery-select-child-element-by-class-with-unknown-path
+                    // alternative (better) way to do so
+                    var find_path = $(mapId).find('path');
+                    console.log(find_path);
+                    console.log(certain_path);
+
                     // $('path')[$('path').length - 1].id = layer._leaflet_id;
-                    certain_path.attr('id', layer._leaflet_id);
+
+                    // this line only works for single anno in a viewer
+                    // certain_path.attr('id', layer._leaflet_id);
+
+                    $(certain_path)[$(certain_path).length - 1].id = layer._leaflet_id;
+                    // $(find_path)[$(find_path).length - 1].id = layer._leaflet_id;
+
+                    // console.log($(certain_path));
+                    // console.log($(certain_path).length);
+                    // console.log($(certain_path)[$(certain_path).length - 1]);
 
                     labelBinding(layer, chars, value);
 
