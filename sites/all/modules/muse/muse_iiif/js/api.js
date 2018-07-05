@@ -169,7 +169,9 @@
                 });
                 /*為annotation添增mousemove事件*/
                 map.on('mousemove', function (e) {
-                    mousemoveOnMap(e)
+                    // console.log('viewer ' + id_num);
+                    // console.log(e);
+                    mousemoveOnMap(e);
                 });
 
                 /*繪畫完成，記錄形狀儲存的點與其資訊*/
@@ -500,9 +502,10 @@
             function backgroundLabelSwitch(l) {
                 var background_id = '#backgroundLabel' + id_num;
                 if (l != 0) {
-                    $('#labelClose').click(function () {
-                        $(background_id).hide();
-                    });
+                    // todo: can't find labelClose anywhere, may need to remove inside of css too
+                    // $('#labelClose').click(function () {
+                    //     $(background_id).hide();
+                    // });
                     $(background_id).show();
                 } else {
                     $(background_id).hide();
@@ -590,7 +593,7 @@
                 var annoClickStr = '<div id="annoClick' + layer._leaflet_id + '" class="annoClickOuter"><div class="blankLine"></div>' +
                     '<div class="annoClickInnerUp" style="background-color:' + colorArray[layer._leaflet_id % 15] + ';"></div>' +
                     '<div class="annoClickInnerDown">' +
-                    '<div class="annoClickChars">' + chars + '</div>' +
+                    '<div class="annoClickChars' + id_num + '">' + chars + '</div>' +
                     '<div class="annoClickMetadata">' + ((value) ? value.metadata[0].value : '') + '</div>' +
                     '<div class="annoClickMetadata">' + ((value) ? value.metadata[1].value[1]['@value'] : '') + '</div>' +
                     '</div>' +
@@ -600,24 +603,22 @@
                 $(clickEvent_id).append(clickEventPane);
                 // $('#clickEventLabel').append(clickEventPane);
 
-                // $(".annoClickChars").dblclick(function(e){
-                //     e.preventDefault();
-                //     map.off('mousemove');
-                //     // console.log('double click run');
-                //     // $(".annoClickChars").unbind('dblclick');
-                //     textEditorOnDblclick(e);
-                // });
-
                 $('#anno' + layer._leaflet_id).click(function () {
+                    console.log('current anno ' + layer._leaflet_id); // works fine
                     annoLableClick(manifest.annoArray[layer._leaflet_id]);
                 });
             }
 
-            $(".annoClickChars").dblclick(function (e) {
+            var chars = ".annoClickChars" + id_num;
+            // $(".annoClickChars").dblclick(function (e) {
+            $(chars).dblclick(function (e) {
                 e.preventDefault();
+                // disable leaflet map mousemove
                 map.off('mousemove');
-                // console.log('double click run');
-                // $(".annoClickChars").unbind('dblclick');
+
+                // console.log(map);
+
+                $(chars).unbind('dblclick');
                 textEditorOnDblclick(e);
             });
 
@@ -656,8 +657,9 @@
                             }
                             myNode.innerHTML = oldText;
                             console.log('after adding text: ' + myNode);
+                            // enable leaflet map mousemove
                             map.on('mousemove', function (e) {
-                                console.log(e);
+                                // console.log(e);
                                 mousemoveOnMap(e);
                             });
 
@@ -956,7 +958,7 @@
 
             /*check mouse on annotation*/
             function annoMousemove(latLng, anno_latLng_array_IDs, clicked) {
-                console.log('annoMousemove active');
+                // console.log('annoMousemove active');
                 manifest.annoArray.map(function (anno) {
                     if (anno) {
                         var i = anno._leaflet_id;
@@ -977,7 +979,7 @@
                                 $(background_id).show();
                                 $('#annoClick' + manifest.annoArray[i]._leaflet_id).show();
                                 // console.log("anno clicked");
-                                // console.log(manifest.annoArray[i]);
+                                console.log(manifest.annoArray[i]); //works fine
                             }
                             anno_latLng_array_IDs.push(i);
 
