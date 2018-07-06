@@ -171,9 +171,6 @@
             function backgroundLabelSwitch(l) {
                 var background_id = '#backgroundLabel' + id_num;
                 if (l != 0) {
-                    $('#labelClose').click(function () {
-                        $(background_id).hide();
-                    });
                     $(background_id).show();
                 } else {
                     $(background_id).hide();

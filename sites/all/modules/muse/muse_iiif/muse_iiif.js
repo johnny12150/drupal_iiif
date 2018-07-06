@@ -39,9 +39,19 @@ window.checkMobileAndTablet = function () {
             // setting the attribute id to the .iiif-viewer div
             viewer.attr('id', "viewer" + index);
 
+            var tinymce_iframe = '<div id="confirmOverlay' + index + '" class="confirmOverlay" style="display: none;"> <div' +
+                ' id="confirmBox' + index + '" class="confirmBox">' +
+                ' <textarea' +
+                ' name="editor" id="editor" cols="30" rows="10" placeholder="123"></textarea> <div' +
+                ' id="confirmButtons" class="confirmButtons"> ' +
+                '<a id="annotation_save' + index + '" class="button blue">save<span></span></a> ' +
+                '<a id="annotation_cancel' + index + '" class="button gray">cancel<span></span></a> </div> </div> </div>';
+
             // console.log(viewer.attr('id', "viewer" + index));
 
             var current_viewer = "#viewer" + index;
+
+            $(current_viewer).append(tinymce_iframe);
 
             $(current_viewer).work();
 

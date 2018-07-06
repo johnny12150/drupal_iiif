@@ -8,17 +8,21 @@ function muse_iiif_library()
         'version' => '1.0',
         'js' => array(
             // common
-            drupal_get_path('module', 'iiifViewer') . '/js/d3.min.js' => array(),
-            drupal_get_path('module', 'iiifViewer') . '/js/leaflet.js' => array(),
-            drupal_get_path('module', 'iiifViewer') . '/js/leaflet.label.js' => array(),
-            drupal_get_path('module', 'iiifViewer') . '/js/leaflet.zoomhome.min.js' => array(),
-            drupal_get_path('module', 'iiifViewer') . '/js/leaflet-iiif.js' => array(),
+            drupal_get_path('module', 'muse_iiif') . '/js/d3.min.js' => array(),
+            drupal_get_path('module', 'muse_iiif') . '/js/leaflet.js' => array(),
+            drupal_get_path('module', 'muse_iiif') . '/js/leaflet.label.js' => array(),
+            drupal_get_path('module', 'muse_iiif') . '/js/leaflet.zoomhome.min.js' => array(),
+            drupal_get_path('module', 'muse_iiif') . '/js/leaflet-iiif.js' => array(),
 
-            drupal_get_path('module', 'iiifViewer') . '/js/show.js' => array(),
+            drupal_get_path('module', 'muse_iiif') . '/js/show.js' => array(),
 
         ),
         'css' => array(
-            drupal_get_path('module', 'iiifViewer') . '/css/show.css' => array(),
+            drupal_get_path('module', 'muse_iiif') . '/css/leaflet.css' => array(),
+            drupal_get_path('module', 'muse_iiif') . '/css/leaflet.draw.css' => array(),
+            drupal_get_path('module', 'muse_iiif') . '/css/leaflet.label.css' => array(),
+            drupal_get_path('module', 'muse_iiif') . '/css/leaflet.zoomhome.css' => array(),
+            drupal_get_path('module', 'muse_iiif') . '/css/show.css' => array(),
         ),
     );
 
@@ -129,6 +133,7 @@ function muse_iiif_libraries_info()
  *
  * @todo Transfer the CSS and JS to use #attached. Could add a content variable
  * or do this with a theme wrapper.
+ *
  */
 function _muse_iiif_template_preprocess(&$variables)
 {
@@ -139,7 +144,16 @@ function _muse_iiif_template_preprocess(&$variables)
 //    libraries_load('openseadragon');
 
     // iiif
-    drupal_add_library('muse_iiif', 'manage_anno');
+    // 登入的將使用者帳號(or uid)傳給 APIs
+    // todo: APIs根據cookie 問drupal API 此使用者last login unix time
+    global $user;
+    if ($user->uid) {
+        $user_id = $user->uid;
+        drupal_add_js(array('muse_iiif' => array('userId' => $user_id)), array('type' => 'setting'));
+        drupal_add_library('muse_iiif', 'manage_anno');
+    } else
+        drupal_add_library('muse_iiif', 'show_anno');
+
     drupal_add_js(drupal_get_path('module', 'muse_iiif') . '/js/leaflet-iiif.js');
     drupal_add_css('http://maxcdn.bootstrapcdn.com/font-awesome/4.3.0/css/font-awesome.min.css', array('type' => 'external'));
     drupal_add_css(drupal_get_path('module', 'muse_iiif') . '/css/coordinate.css');
@@ -174,15 +188,17 @@ function _muse_iiif_template_preprocess(&$variables)
 //  }
 //	', 'inline');
 
-//    drupal_add_js(drupal_get_path('module', 'muse_iiif') . '/muse_iiif.js');
+    drupal_add_js(drupal_get_path('module', 'muse_iiif') . '/muse_iiif.js');
 
     $js_options = array('type' => 'inline', 'scope' => 'footer', 'weight' => 3);
 
-//    drupal_add_js('
-//(function ($){
-//	$(".iiif-viewer").viewer();
-//})(jQuery);
-//', $js_options);
+    // to control multi-viewers
+
+    drupal_add_js('
+        (function ($){
+	        $(".iiif-viewer").viewer();
+        })(jQuery);
+    ', $js_options);
 
     // iiif
     drupal_add_js("
@@ -195,11 +211,11 @@ function _muse_iiif_template_preprocess(&$variables)
     });
 ", $js_options);
 
-    drupal_add_js('
-    (function($) {
-        $(".iiif-viewer").work();
-    })(jQuery);
-', $js_options);
+//    drupal_add_js('
+//        (function($) {
+//            $(".iiif-viewer").work();
+//        })(jQuery);
+//    ', $js_options);
 
 }
 

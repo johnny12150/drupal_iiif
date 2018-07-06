@@ -237,9 +237,9 @@
 
                         manifest.drawnItems.addLayer(layer);
                         // annoArray會根據 leaflet_id 把資料放進去
-                        manifest.annoArray[layer._leaflet_id] = annoData;
-                        layer._path.id = layer._leaflet_id;
-                        labelBinding(layer, chars);
+                        // manifest.annoArray[layer._leaflet_id] = annoData;
+                        // layer._path.id = layer._leaflet_id;
+                        // labelBinding(layer, chars);
                         // 處理on 的xywh
                         // 做anno 座標edit的話 可能也需要
                         var p = convert_latlng_SVG(annoData.point);
@@ -289,14 +289,15 @@
                                     mId: manifest.data.mId,
                                     canvas_index: c_index,
                                     uId: drupal_uid // for verify in APIs
-                                    // todo: making sure anno API using uId to do Auth
                                 }), //passing data to server
                             success: function (response) {
                                 var res_data = response;
                                 console.log(res_data);
+                                // 當manifest的othercontent URL沒有被更新(存在同個註記)
                                 if (res_data.text == 'add new one') {
                                     console.log("no need to update otherContent url");
                                     console.log(res_data.resources_id);
+                                    manifest.annoArray[layer._leaflet_id] = annoData;
                                     new_anno_index = res_data.num;
                                     manifest.annoArray[layer._leaflet_id].anno_index = new_anno_index;
                                     json.resource['@id'] = res_data.resources_id;
@@ -304,9 +305,17 @@
                                     // 取代原本 @id 是 default
                                     json['@id'] = canvas.otherContent[0]['@id'];
                                     manifest.annolist.push(json);
+                                    layer._path.id = layer._leaflet_id;
+                                    labelBinding(layer, chars);
                                 }
+                                else if (text.text == 'things go sideways' || text.text == 'not an auth action') {
+                                    // console.log(text.text);
+                                    alert("You don't have the permission to create an annotation.");
+                                    manifest.drawnItems.removeLayer(layer);
+                                }// 當manifest的othercontent URL被更新
                                 else {
                                     console.log("updated otherContent Url: " + res_data.text);
+                                    manifest.annoArray[layer._leaflet_id] = annoData;
                                     canvas.otherContent[0]['@id'] = res_data.text;
                                     new_anno_index = res_data.num;
                                     manifest.annoArray[layer._leaflet_id].anno_index = new_anno_index;
@@ -314,6 +323,8 @@
                                     json.anno_index = new_anno_index;
                                     json['@id'] = canvas.otherContent[0]['@id'];
                                     manifest.annolist.push(json);
+                                    layer._path.id = layer._leaflet_id;
+                                    labelBinding(layer, chars);
                                 }
                             },
                             error: function (data) {
@@ -468,7 +479,6 @@
                 return map;
             }
 
-            // todo: fix multi viewer displaying issue
             function mousemoveOnMap(e) {
                 var click = '#clickEventLabel' + id_num;
                 var outer = click + ' .annoClickOuter';
@@ -660,7 +670,7 @@
                         if (e.keyCode === 27) {
                             // when hitting ESC then hide the label
                             // var click = '#clickEventLabel' + id_num;
-                            // todo: fix - multi viewer的註記顯示怪怪，可以參考原本的api.js
+                            // fix - multi viewer的註記顯示怪怪，可以參考原本的api.js
                             // $('.annoClickOuter').hide();
                             // $('.annoClickChars').hide();
                             // $(click).hide();
@@ -777,7 +787,7 @@
                             var text = response.text();
                             console.log("server端response: " + response);
                             //處理認證不過收到'things go sideways'時的註記label顯示
-                            if (text == 'things go sideways') {
+                            if (text == 'things go sideways' || text == 'not an auth action') {
                                 alert('Something going wrong, failed to update the annotation.');
                                 // todo: fix - multi viewer的註記顯示怪怪，可以參考原本的api.js
                                 while (myNode.firstChild) {
