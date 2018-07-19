@@ -2,6 +2,14 @@
     $.fn.work = function () {
         var _this = this;
 
+        // setting the APIs domain
+        //test base 4
+        // const path = 'http://172.16.100.30';
+        var path = 'http://demo-muse.ipicbox.tw';
+
+        // development
+        // var path = 'http://172.16.100.20:3033';
+
         var wait_check = function (callback) {
             // based on data-url to POST manifest API
             // and API will determine to return an already exist manifest URI
@@ -10,9 +18,10 @@
             var current_id = _this.attr('id');
             var URI_num = '#' + current_id;
             var URI = $(URI_num).attr('data-url');
+            // URI_split 就是pic_name是唯一值
             var URI_split = URI.split('/').pop();
-            console.log(URI_split);
-            var url = 'http://172.16.100.20:3033/api/GET/manifest/check/' + URI_split;
+
+            var url = path + '/api/GET/manifest/check/' + URI_split;
             $.ajax({
                 type: 'GET',
                 url: url,
@@ -21,7 +30,7 @@
                 success: function (response) {
                     // console.log('mId: ');
                     // console.log(response);
-                    var uri = 'http://172.16.100.20:3033/api/GET/' + response + '/manifest';
+                    var uri = path + '/api/GET/' + response + '/manifest';
                     callback(uri);
                 },
                 error: function (data) {
@@ -213,11 +222,12 @@
                     layer = L.rectangle(latLng);
                     manifest.drawnItems.addLayer(layer);
                     var mapId = '#mapid' + id_num;
-                    // console.log($(mapId).children().children()[2]);
+
                     var certain_path = $(mapId).children().children().children().children().children('path');
-                    // console.log(layer._leaflet_id);
-                    // $('path')[$('path').length - 1].id = layer._leaflet_id;
-                    certain_path.attr('id', layer._leaflet_id);
+
+                    var find_path = $(mapId).find('path');
+
+                    $(certain_path)[$(certain_path).length - 1].id = layer._leaflet_id;
 
                     labelBinding(layer, chars, value);
 
