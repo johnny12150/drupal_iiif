@@ -3,7 +3,8 @@
     $.fn.work = function () {
         // setting the APIs domain
         //test base 4
-        var path = 'http://172.16.100.30';
+        // var path = 'http://172.16.100.30';
+        var path = 'http://demo-muse.ipicbox.tw';
 
         // development
         // var path = 'http://172.16.100.20:3033';
@@ -12,11 +13,10 @@
         var drupal_uid = Drupal.settings.muse_iiif.userId;
 
         var _this = this;
-
+        // 前置處理完成後才呼叫callback
         var wait_check = function (callback) {
-            // based on data-url to POST manifest API
+            // based on data-url to POST(GET) manifest API
             // and API will determine to return an already exist manifest URI
-            // 回傳getJSON可以ajax GET 的URI
             // or create a new one then return
             var current_id = _this.attr('id');
             var URI_num = '#' + current_id;
@@ -30,6 +30,7 @@
                 contentType: "application/json",
                 crossDomain: true,
                 success: function (response) {
+                    // response回傳的是mId
                     var uri = path + '/api/GET/' + response + '/manifest';
                     callback(uri);
                 },
@@ -106,6 +107,7 @@
                     rotation: manifest.currenRotation
                 }).addTo(map);
                 manifest.drawnItems = L.featureGroup().addTo(map);
+                // todo 控制顯示那些annotation
                 L.control.layers({}, {'drawlayer': manifest.drawnItems}, {
                     position: 'topleft',//'topleft', 'topright', 'bottomleft' or 'bottomright'
                     collapsed: false
@@ -167,7 +169,6 @@
                 });
                 /*為annotation添增mousemove事件*/
                 map.on('mousemove', function (e) {
-                    // console.log('viewer ' + id_num);
                     mousemoveOnMap(e);
                 });
 
@@ -321,8 +322,6 @@
                                 console.log(res_data);
                                 // 當manifest的othercontent URL沒有被更新(存在同個註記)
                                 if (res_data.text == 'add new one') {
-                                    // console.log("no need to update otherContent url");
-                                    // console.log(res_data.resources_id);
                                     manifest.annoArray[layer._leaflet_id] = annoData;
                                     new_anno_index = res_data.num;
                                     manifest.annoArray[layer._leaflet_id].anno_index = new_anno_index;
@@ -333,6 +332,15 @@
                                     manifest.annolist.push(json);
                                     layer._path.id = layer._leaflet_id;
                                     labelBinding(layer, chars, json);
+
+                                    var annoclickchars = ".annoClickChars" + id_num;
+                                    $(annoclickchars).dblclick(function (e) {
+                                        console.log('trigger dbclick');
+                                        e.preventDefault();
+                                        // disable leaflet map mousemove
+                                        map.off('mousemove');
+                                        textEditorOnDblclick(e);
+                                    });
                                 }
                                 else if (res_data.text == 'things go sideways' || res_data.text == 'not an auth action') {
                                     alert("You don't have the permission to create an annotation.");
@@ -350,6 +358,15 @@
                                     manifest.annolist.push(json);
                                     layer._path.id = layer._leaflet_id;
                                     labelBinding(layer, chars, json);
+
+                                    var annoclickchars = ".annoClickChars" + id_num;
+                                    $(annoclickchars).dblclick(function (e) {
+                                        console.log('trigger dbclick');
+                                        e.preventDefault();
+                                        // disable leaflet map mousemove
+                                        map.off('mousemove');
+                                        textEditorOnDblclick(e);
+                                    });
                                 }
                             },
                             error: function (data) {
@@ -539,6 +556,15 @@
 
                 ctrl_zoom();
 
+                var annoclickchars = ".annoClickChars" + id_num;
+                $(annoclickchars).dblclick(function (e) {
+                    console.log('trigger dbclick');
+                    e.preventDefault();
+                    // disable leaflet map mousemove
+                    map.off('mousemove');
+                    textEditorOnDblclick(e);
+                });
+
                 return map;
             }
 
@@ -695,17 +721,15 @@
                 });
             }
 
-            var chars = ".annoClickChars" + id_num;
-            // $(".annoClickChars").dblclick(function (e) {
-            $(chars).dblclick(function (e) {
-                e.preventDefault();
-                // disable leaflet map mousemove
-                map.off('mousemove');
-
-                // console.log(map);
-
-                textEditorOnDblclick(e);
-            });
+            // var chars = ".annoClickChars" + id_num;
+            // $(chars).dblclick(function (e) {
+            //     console.log('trigger dbclick');
+            //     e.preventDefault();
+            //     // disable leaflet map mousemove
+            //     map.off('mousemove');
+            //     textEditorOnDblclick(e);
+            // });
+            // console.log($(chars));
 
             // called when label is double clicked
             function textEditorOnDblclick(e) {
@@ -730,9 +754,6 @@
                         if (e.keyCode === 27) {
                             // when hitting ESC then hide the label
                             // var click = '#clickEventLabel' + id_num;
-                            // fix - multi viewer的註記顯示怪怪，可以參考原本的api.js
-                            // $('.annoClickOuter').hide();
-                            // $('.annoClickChars').hide();
                             // $(click).hide();
                             var myNode = e.target.parentElement;
                             console.log(myNode);
@@ -764,6 +785,10 @@
                     var annoid = e.target.parentElement.parentElement.parentElement.id;
                     var newText = e.target.value;
                     var myNode = e.target.parentElement;
+
+                    // avoid empty input
+                    if (newText === '')
+                        newText = '無描述';
 
                     // 這個annoid就是 _leaflet_id
                     annoid = annoid.replace(/[A-Z]|[a-z]/g, "");
@@ -903,6 +928,7 @@
                 // $($('.leaflet-control-container.leaflet-top.leaflet-left')[0]).prepend(div);
                 $($(leaflet_ctrl)[0]).prepend(div);
                 $('.reset').click(function () {
+                    // $(chars).unbind("dblclick");
                     manifest.leaflet.remove();
                     manifest.currenRotation = 0;
                     manifest.leaflet = leafletMap();
