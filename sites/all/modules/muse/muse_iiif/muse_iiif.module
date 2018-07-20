@@ -144,8 +144,10 @@ function _muse_iiif_template_preprocess(&$variables)
 //    libraries_load('openseadragon');
 
     // call the Drupal object API for some info.
+    // 這裡取得的scope是資料原本是哪裡來的,和variable_get的結果有可能不一樣
     dpm(_muse_digiobject_load("e606d84f129b2ed965a7c1ae3c7cf508"));
     // 取得在哪個子站
+    // 目前的網頁的scope, 做驗證時用
     $scope = variable_get('muse_scope', '');
     dpm($scope);
     // 取得目前的uri
