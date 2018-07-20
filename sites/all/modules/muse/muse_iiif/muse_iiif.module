@@ -143,12 +143,22 @@ function _muse_iiif_template_preprocess(&$variables)
 
 //    libraries_load('openseadragon');
 
+    // call the Drupal object API for some info.
+    dpm(_muse_digiobject_load("e606d84f129b2ed965a7c1ae3c7cf508"));
+    // 取得在哪個子站
+    $scope = variable_get('muse_scope', '');
+    dpm($scope);
+    // 取得目前的uri
+    $current_url = url(current_path(), array('absolute' => TRUE));
+    dpm($current_url);
+
     // iiif
     // 登入的將使用者帳號(or uid)傳給 APIs
-    // todo: APIs根據cookie 問drupal API 此使用者last login unix time
     global $user;
     if ($user->uid) {
+        // setting user_id
         $user_id = $user->uid;
+        // pass the variable to js
         drupal_add_js(array('muse_iiif' => array('userId' => $user_id)), array('type' => 'setting'));
         drupal_add_library('muse_iiif', 'manage_anno');
     } else
