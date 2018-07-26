@@ -690,6 +690,8 @@
                     // console.log($(certain_path).length);
                     // console.log($(certain_path)[$(certain_path).length - 1]);
 
+                    path_order.push(layer._leaflet_id);
+
                     labelBinding(layer, chars, value);
 
                     var annoData = {
