@@ -69,9 +69,11 @@
             manifest.currenRotation = 0;
             manifest.countCreatAnnotation = 0;
             manifest.canvasSize = {height: manifest.currenCanvas.height, width: manifest.currenCanvas.width};
+            var path_order = [];
             manifest.leaflet = leafletMap();
             manifest.drawnItems;
             manifest.annoArray;
+            var hidden_layers = [];
 
             /*create leaflet map*/
             function leafletMap() {
@@ -107,7 +109,7 @@
                     rotation: manifest.currenRotation
                 }).addTo(map);
                 manifest.drawnItems = L.featureGroup().addTo(map);
-                // todo 控制顯示那些annotation
+                // todo 控制layer顯示那些annotation
                 L.control.layers({}, {'drawlayer': manifest.drawnItems}, {
                     position: 'topleft',//'topleft', 'topright', 'bottomleft' or 'bottomright'
                     collapsed: false
@@ -146,12 +148,28 @@
                         manifest.annoArray.map(function (e) {
                             e.overlay = 'add';
                         });
+                        //把path的id 補回去
+                        for (let i = 0; i < $('path').length; i++)
+                            $('path')[i].id = path_order[i];
+
+                        // 從hidden layers中剔除
+                        for (let m = 0; m < Object.keys(e.layer._layers).length; m++) {
+                            //Object.keys(e.layer._layers): 被加回來的layers的leaflet id
+                            var find_index = hidden_layers.indexOf(Object.keys(e.layer._layers)[m]);
+                            hidden_layers.splice(find_index, 1);
+                            console.log(hidden_layers);
+                        }
 
                     },
                     overlayremove: function (e) {
                         manifest.annoArray.map(function (e) {
                             e.overlay = 'remove';
                         });
+
+                        //儲存被隱藏的註記
+                        for (let m = 0; m < Object.keys(e.layer._layers).length; m++) {
+                            hidden_layers.push(Object.keys(e.layer._layers)[m]);
+                        }
 
                     }
                 });
@@ -246,6 +264,7 @@
                             'overlay': 'add',
                             'exist': true
                         };
+                        console.log(annoData.point);
 
                         manifest.drawnItems.addLayer(layer);
                         // annoArray會根據 leaflet_id 把資料放進去
@@ -341,6 +360,8 @@
                                         map.off('mousemove');
                                         textEditorOnDblclick(e);
                                     });
+
+                                    path_order.push(layer._leaflet_id);
                                 }
                                 else if (res_data.text == 'things go sideways' || res_data.text == 'not an auth action') {
                                     alert("You don't have the permission to create an annotation.");
@@ -367,6 +388,8 @@
                                         map.off('mousemove');
                                         textEditorOnDblclick(e);
                                     });
+
+                                    path_order.push(layer._leaflet_id);
                                 }
                             },
                             error: function (data) {
@@ -874,6 +897,7 @@
                 var minPoint = L.point(str[0], str[1]);
                 var maxPoint = L.point(parseInt(str[0]) + parseInt(str[2]), parseInt(str[1]) + parseInt(str[3]));
                 var x = minPoint.x, y = minPoint.y;
+
                 switch (rotation) {
                     case 0:
                         break;
@@ -1052,6 +1076,13 @@
                 array.forEach(function (e) {
                     if (e.area == elem) {
                         minelem = e;
+                        // 避免leaflet的overlay remove 會把所有layer的overlay屬性都設為remove
+                        // 把這裡的e.leaflet_id跟hidden做比對後, 再來決定minelem的overlay
+                        //存在hidden layer裡的leaflet_id是string型態
+                        var text = minelem._leaflet_id.toString();
+                        var find_index = hidden_layers.indexOf(text);
+                        if(find_index <= -1 )
+                            minelem.overlay = "add";
                     }
                 });
                 manifest.annoArray.map(function (anno) {
