@@ -149,15 +149,16 @@
                             e.overlay = 'add';
                         });
                         //把path的id 補回去
-                        for (let i = 0; i < $('path').length; i++)
-                            $('path')[i].id = path_order[i];
+                        for (let i = 0; i < $('#'+map_num+' path').length; i++)
+                            // (alternative) var find_path = $(mapId).find('path');
+                            // 在多個viewer中需指定清楚是哪張map的path, 不然會互相影響
+                            $('#'+map_num+' path')[i].id = path_order[i];
 
                         // 從hidden layers中剔除
                         for (let m = 0; m < Object.keys(e.layer._layers).length; m++) {
                             //Object.keys(e.layer._layers): 被加回來的layers的leaflet id
                             var find_index = hidden_layers.indexOf(Object.keys(e.layer._layers)[m]);
                             hidden_layers.splice(find_index, 1);
-                            console.log(hidden_layers);
                         }
 
                     },
