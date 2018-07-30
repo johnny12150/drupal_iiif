@@ -108,8 +108,10 @@
                     setMaxBounds: true,
                     rotation: manifest.currenRotation
                 }).addTo(map);
+
                 manifest.drawnItems = L.featureGroup().addTo(map);
-                // todo 控制layer顯示那些annotation
+
+                // 控制layer顯示那些annotation
                 L.control.layers({}, {'drawlayer': manifest.drawnItems}, {
                     position: 'topleft',//'topleft', 'topright', 'bottomleft' or 'bottomright'
                     collapsed: false
@@ -123,6 +125,7 @@
                     }
                 }
 
+                // todo: 增加marker style的註記
                 map.addControl(new L.Control.Draw({
                     edit: {
                         featureGroup: manifest.drawnItems,
@@ -143,6 +146,7 @@
                         circlemarker: false
                     }
                 }));
+
                 map.on({
                     overlayadd: function (e) {
                         manifest.annoArray.map(function (e) {
