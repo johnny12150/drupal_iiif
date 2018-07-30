@@ -11,17 +11,10 @@ window.checkMobileAndTablet = function () {
     $.fn.viewer = function () {
         var isMobile = window.checkMobileAndTablet();
         var viewers = this;
-        var virwerArray = [];
 
         var mouseWheelTip = $('<div id="mouseWheelTip">縮放(ctrl+滾輪)  拖曳(ctrl+左鍵)</div>');
         mouseWheelTip.hide();
         $('body').append($(mouseWheelTip));
-
-        // set up viewer
-        // OpenSeadragon.setString("Tooltips.Home", "置中");
-        // OpenSeadragon.setString("Tooltips.ZoomOut", "縮小");
-        // OpenSeadragon.setString("Tooltips.ZoomIn", "放大");
-        // OpenSeadragon.setString("Tooltips.FullPage", "全螢幕");
 
         // console.log(viewers.length);
 
@@ -39,6 +32,7 @@ window.checkMobileAndTablet = function () {
             // setting the attribute id to the .iiif-viewer div
             viewer.attr('id', "viewer" + index);
 
+            // configuring the tinymce editor
             var tinymce_iframe = '<div id="confirmOverlay' + index + '" class="confirmOverlay" style="display: none;"> <div' +
                 ' id="confirmBox' + index + '" class="confirmBox">' +
                 ' <textarea' +
